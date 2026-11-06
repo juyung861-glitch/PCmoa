@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCmoa</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="manifest" href="/static/manifest.json"><meta name="theme-color" content="#0b0b12">
+<script>/* 테마를 그리기 전에 적용 — 깜빡임 방지. 저장값: system(기본)·dark·light */
+(function(){var t='system';try{t=localStorage.getItem('theme')||'system'}catch(e){}
+var light=t==='light'||(t==='system'&&matchMedia('(prefers-color-scheme: light)').matches);
+document.documentElement.setAttribute('data-theme',light?'light':'dark');})();</script><link rel="icon" href="/static/icon-192.png">
+<link rel="stylesheet" href="/static/vendor/xterm.css">
+<script src="/static/vendor/xterm.js"></script><script src="/static/vendor/addon-fit.js"></script>
+<style>
+:root{
+  --bg:#0b0b12; --panel:#14141f; --panel2:#1a1a28; --border:#262637; --border2:#33334a;
+  --text:#e8e8f0; --muted:#8a8aa3; --accent:#6c63ff; --accent2:#8f88ff;
+  --on:#3ddc84; --reach:#4da3ff; --off:#6b6b80; --warn:#f5c542; --danger:#ff5c6c;
+  --faint:#5f5f78; --code:#c9c9ff; --sel-bg:#19182b; --sel-border:#2e2c55; --chip:#1c1b33; --hover2:#262640;
+  --ok-b:#1f4d35; --ok-bg:#0f2a1c; --bad-b:#5a2a32; --warn-b:#5a4d1f; --reach-b:#1f3a5a; --reach-bg:#0f1f33;
+  --orange:#ffb16b; --orange-b:#5a3b1f; --orange-bg:#2a1a0f; --pwr-b:#4a2228; --pwr-bg:#1f1218; --pwr-bg2:#2a1620;
+  --me-b:#3b3880; --logo2:#3a37a8; --overlay:rgba(0,0,0,.6); --shadow:rgba(0,0,0,.5); --card-shadow:none;
+  color-scheme:dark;
+}
+/* 라이트 모드 — 밝은 파스텔 톤 */
+:root[data-theme="light"]{
+  --bg:#f6f4fb; --panel:#ffffff; --panel2:#f2effa; --border:#e4dff3; --border2:#cfc7ea;
+  --text:#2b2840; --muted:#6c6787; --accent:#7a6af0; --accent2:#5f50d6;
+  --on:#1c9c5e; --reach:#2f7fd0; --off:#a29db8; --warn:#b07f00; --danger:#dc4357;
+  --faint:#9993b3; --code:#4a3fb0; --sel-bg:#ede9fe; --sel-border:#cfc6fb; --chip:#ede9fe; --hover2:#ede9fe;
+  --ok-b:#bde6cf; --ok-bg:#e7f7ee; --bad-b:#f4c3ca; --warn-b:#efdca2; --reach-b:#c4dcf5; --reach-bg:#e9f2fc;
+  --orange:#d4731f; --orange-b:#f2d1b1; --orange-bg:#fdf1e5; --pwr-b:#f3c5cc; --pwr-bg:#fdedf0; --pwr-bg2:#fadde3;
+  --me-b:#cfc6fb; --logo2:#b3a8ff; --overlay:rgba(43,40,64,.32); --shadow:rgba(80,70,140,.18);
+  --card-shadow:0 1px 2px rgba(80,70,140,.06),0 6px 18px rgba(80,70,140,.06);
+  color-scheme:light;
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Pretendard,-apple-system,"Segoe UI",sans-serif}
+button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--border);background:var(--panel2);border-radius:8px;padding:6px 12px;white-space:nowrap}
+button:hover{border-color:var(--border2)} button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff} button.primary:hover{background:var(--accent2)}
+button.ghost{background:transparent} button.danger:hover{border-color:var(--danger);color:var(--danger)}
+button.sm{padding:3px 9px;font-size:12px}
+input,select,textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{font-family:Consolas,"D2Coding",monospace;font-size:13px;min-height:90px;resize:vertical}
+code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:0 5px;font-family:Consolas,monospace;font-size:12px}
+.layout{display:flex;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;flex:none;width:232px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 8px 16px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.brand .logo{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--logo2));display:grid;place-items:center;font-size:16px}
+.brand b{display:block;font-size:15px} .brand small{color:var(--muted);font-size:11px}
+.nav a{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;color:var(--text);text-decoration:none;border:1px solid transparent;margin-bottom:2px}
+.nav a:hover{background:var(--panel2)} .nav a.active{background:var(--sel-bg);border-color:var(--sel-border);color:var(--accent2)}
+.nav a svg{flex:none;margin-right:2px}
+.nav svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8}
+.side .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.conn{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--muted);font-size:12px}
+.conn .dot{width:8px;height:8px;border-radius:50%;background:var(--off);display:inline-block;margin-right:6px}
+.conn.ok .dot{background:var(--on);box-shadow:0 0 8px var(--on)}
+.main{flex:1;padding:20px 28px;min-width:0}
+.head{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.head .icon{width:40px;height:40px;border-radius:10px;background:var(--chip);display:grid;place-items:center;color:var(--accent2)}
+.head h1{margin:0;font-size:20px;display:flex;gap:10px;align-items:center}
+.head p{margin:0;color:var(--muted);font-size:12px}
+.head .spacer{flex:1}
+.tb{display:flex;gap:8px;padding:4px;border:1px solid var(--border);border-radius:12px;background:var(--panel)}
+.tb button{height:38px;padding:0 14px;border-radius:9px;background:transparent;border-color:transparent;font-size:13px}
+.tb button:hover{background:var(--panel2);border-color:var(--border2)} .tb button.primary{background:var(--accent);border-color:var(--accent);height:38px}
+.chat{display:grid;grid-template-columns:240px 1fr;gap:14px;height:calc(100vh - 116px);min-height:420px}
+.clist{min-height:0;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.clist .ci{padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13px;border:1px solid transparent;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clist .ci:hover{background:var(--panel2)} .clist .ci.on{background:var(--sel-bg);border-color:var(--sel-border);color:var(--accent2)} .clist .ci small{display:block;color:var(--faint);font-size:11px}
+.cmain{min-height:0;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;min-width:0}
+.chead2{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)} .cauto{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.seg{display:flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 12px;font-size:12px;background:transparent;color:var(--muted)}
+.seg button.on{background:var(--accent);color:#fff}
+.cdirs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}
+.cdirs .dir{background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:2px 4px 2px 10px;font-family:Consolas,monospace;color:var(--text)}
+.cdirs .dir b{cursor:pointer;color:var(--muted);padding:0 6px;font-weight:400} .cdirs .dir b:hover{color:var(--danger)}
+.tcard .why{font-size:12px;color:var(--warn);margin:4px 0}
+.cauto input{width:15px;height:15px;accent-color:var(--accent)}
+.cmsgs{flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.cempty{margin:auto;text-align:center;color:var(--muted);font-size:13px;line-height:1.9} .cempty span{font-size:12px;color:var(--faint)}
+.msg{max-width:82%;padding:10px 14px;border-radius:12px;font-size:14px;white-space:pre-wrap;word-break:break-word;line-height:1.6}
+.msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg.a{align-self:flex-start;background:var(--panel2);border:1px solid var(--border);border-bottom-left-radius:4px}
+.tcard{align-self:flex-start;max-width:90%;width:620px;border:1px solid var(--border2);border-radius:12px;background:var(--bg);padding:10px 12px;font-size:13px}
+.tcard .th{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-bottom:6px} .tcard .th b{color:var(--text)}
+.tcard textarea{min-height:38px;font-size:12px} .tcard pre{margin:6px 0 0;white-space:pre-wrap;font:12px/1.5 Consolas,monospace;color:var(--code);max-height:220px;overflow:auto}
+.tcard.high{border-color:var(--bad-b)} .tcard .acts{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+.tcard img{max-width:100%;max-height:420px;object-fit:contain;border-radius:8px;margin-top:6px;border:1px solid var(--border)}
+.tag{font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid var(--border)} .tag.ok{color:var(--on);border-color:var(--ok-b)} .tag.bad{color:var(--danger);border-color:var(--bad-b)} .tag.wait{color:var(--warn);border-color:var(--warn-b)}
+.cinput{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)} .cinput textarea{min-height:44px;font-family:inherit;font-size:14px} .cinput button{height:44px;align-self:flex-end}
+.thinking{align-self:flex-start;color:var(--muted);font-size:13px}
+@media (max-width:760px){.chat{grid-template-columns:1fr;height:auto}.clist{max-height:160px}}
+.acct-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.tbl.acct td{vertical-align:middle} .tbl.acct select{width:auto;padding:4px 8px;font-size:12px}
+.tbl.acct tr.off td{opacity:.5} .tbl.acct .me{font-size:10px;color:var(--accent2);border:1px solid var(--me-b);border-radius:999px;padding:0 6px;margin-left:4px}
+.tbl.acct .acts{display:flex;gap:4px;justify-content:flex-end;white-space:nowrap}
+.tip.compact{padding:8px 14px;font-size:12px}
+.badge{font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);background:var(--panel)}
+.badge.on{color:var(--on);border-color:var(--ok-b)}
+.tip{border:1px solid var(--border);background:var(--panel);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7}
+.tip b{color:var(--text)}
+.filters{border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;flex-direction:column;gap:10px}
+.filters .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap} .chip{font-size:12px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);cursor:pointer}
+.chip.active{border-color:var(--accent);color:var(--accent2)}
+.legend{margin-left:auto;font-size:11px;color:var(--muted);display:flex;gap:12px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.gtabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.gtab{padding:7px 14px;border-radius:10px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-size:13px;display:flex;gap:8px;align-items:center}
+.gtab:hover{border-color:var(--border2)} .gtab.active{border-color:var(--accent);background:var(--chip);color:var(--accent2)}
+.gtab .cnt{font-size:11px;color:var(--muted)} .gtab .kind{font-size:10px;padding:0 6px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+.gtab.add{border-style:dashed;color:var(--muted)}
+.term{background:#000;border-radius:10px;padding:6px;height:60vh}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,360px));gap:16px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;position:relative}
+.card .sect{margin-top:4px} .card .big{margin-bottom:2px}
+.card.main{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.card.selected{background:#171630}
+.card.remote-off .big{background:var(--accent)}
+.chead{display:flex;align-items:center;gap:10px}
+.chead .sel{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.cicon{width:36px;height:36px;border-radius:9px;background:var(--chip);display:grid;place-items:center;color:var(--accent2);flex:none}
+.cicon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ctitle{flex:1;min-width:0} .ctitle .name{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ctitle .sub{font-size:12px;color:var(--muted)}
+.ctitle .star{color:var(--accent2);font-size:13px}
+.sbadge{font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid;white-space:nowrap}
+.sbadge.online{color:var(--on);border-color:var(--ok-b);background:var(--ok-bg)} .sbadge.reachable{color:var(--reach);border-color:var(--reach-b);background:var(--reach-bg)}
+.sbadge.unreachable{color:var(--orange);border-color:var(--orange-b);background:var(--orange-bg)} .sbadge.unknown{color:var(--warn);border-color:var(--warn-b)}
+.more{border:0;background:transparent;color:var(--muted);font-size:18px;padding:0 4px;line-height:1} .more:hover{color:var(--text)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;font-size:13px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.kv span{color:var(--muted)} .kv b{font-weight:500;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .kv i{font-style:normal;color:var(--muted);font-size:12px}
+.sect{font-size:12px;color:var(--muted);margin-top:2px}
+.card .big{width:100%;height:44px;padding:0 12px;font-size:14px;font-weight:600;background:var(--accent);border-color:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px}
+.card .big.off{background:var(--panel2);border-color:var(--border2);color:var(--text);font-weight:500}
+.card .big:hover{filter:brightness(1.1)}
+.card .big svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.b3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.b3 button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:52px;padding:0 6px;font-size:12px;border-radius:10px;white-space:nowrap}
+.b3.b4{grid-template-columns:repeat(4,1fr)} .b3.b5{grid-template-columns:repeat(5,1fr);gap:6px} .b3.b5 button{padding:0 2px} .b3 + .b3{margin-top:2px} .b3.low button{height:38px;flex-direction:row;gap:6px}
+.b3 button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.b3 button:not(:has(span)){flex-direction:row;gap:6px}
+.b3 button.pwr{color:var(--danger);border-color:var(--pwr-b);background:var(--pwr-bg)} .b3 button.pwr:hover{background:var(--pwr-bg2)}
+.cmenu{position:absolute;z-index:30;background:var(--panel2);border:1px solid var(--border2);border-radius:10px;padding:6px;min-width:220px;box-shadow:0 10px 30px var(--shadow);font-size:13px}
+.cmenu div{padding:8px 10px;border-radius:7px;cursor:pointer} .cmenu div:hover{background:var(--hover2)} .cmenu div.danger{color:var(--danger)}
+.empty{text-align:center;padding:90px 20px;color:var(--muted)}
+.empty .ico{width:56px;height:56px;border-radius:14px;background:var(--panel2);margin:0 auto 16px;display:grid;place-items:center;color:var(--accent2)}
+.empty h3{color:var(--text);margin:0 0 6px}
+.modal{position:fixed;inset:0;background:var(--overlay);display:none;place-items:center;z-index:10;overflow:auto;padding:20px}
+.modal.show{display:grid}
+.box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;width:400px;max-width:100%;display:flex;flex-direction:column;gap:10px}
+.box.wide{width:720px}
+.box h2{margin:0 0 4px;font-size:18px} .box label{font-size:12px;color:var(--muted)}
+.box .err{color:var(--danger);font-size:12px;min-height:16px}
+.box .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.box .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hide{display:none!important}
+.log{border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:6px 14px;font-size:12px;color:var(--muted);max-height:70vh;overflow:auto}
+.log div{padding:6px 0;border-bottom:1px solid var(--border)} .log div:last-child{border:0}
+.log time{color:var(--faint);margin-right:8px}
+.results{display:flex;flex-direction:column;gap:8px;max-height:45vh;overflow:auto}
+.res{border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:12px;background:var(--bg)}
+.res .h{display:flex;gap:8px;align-items:center;color:var(--muted);margin-bottom:4px}
+.res .h b{color:var(--text)} .res .ok{color:var(--on)} .res .bad{color:var(--danger)} .res .wait{color:var(--warn)}
+.res pre{margin:0;white-space:pre-wrap;word-break:break-all;font:12px/1.5 Consolas,"D2Coding",monospace;color:var(--code);max-height:200px;overflow:auto}
+.drop{border:1px dashed var(--border2);border-radius:10px;padding:14px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--accent2)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--panel2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:20;max-width:420px}
+.toast.show{opacity:1}
+.help{display:grid;gap:14px;max-width:900px}
+.hcard{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 20px;font-size:13px}
+.hcard h3{margin:0 0 8px;font-size:15px} .hcard p{margin:6px 0} .hcard ul{margin:6px 0;padding-left:18px} .hcard li{margin:3px 0}
+.hcard pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:8px 0;overflow:auto;font:12px/1.5 Consolas,"D2Coding",monospace;color:var(--code);white-space:pre}
+.hcard table{border-collapse:collapse;width:100%;margin:8px 0} .hcard th,.hcard td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.hcard th{background:var(--panel2);color:var(--muted);font-weight:500} .hcard .note{color:var(--muted);font-size:12px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px} .tbl th,.tbl td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left} .tbl th{color:var(--muted);font-weight:500}
+@media (max-width:760px){.side{display:none}.main{padding:14px}.box.wide{width:100%}}
+
+#screenWrap{margin-top:10px;background:#000;border-radius:10px;overflow:hidden;position:relative;min-height:240px;display:grid;place-items:center}
+#screenWrap.ctl{box-shadow:0 0 0 2px var(--accent)} #screenWrap.ctl img{cursor:crosshair}
+#screenWrap:fullscreen{border-radius:0} #screenWrap:fullscreen img{max-height:100vh}
+#screenImg{display:block;max-width:100%;max-height:76vh;user-select:none;-webkit-user-drag:none}
+#screenKbd{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0}
+#screenWait{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:20px}
+
+.ksum{font-size:12px;color:var(--muted);margin:4px 0 10px}
+.krow{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.krow.on{border-color:var(--accent);background:rgba(124,108,255,.07)}
+.krow .kn{font-weight:600} .krow .kn .tag{margin-left:6px}
+.krow .km{font-size:12px;color:var(--muted);grid-column:1} .krow .km code{font-size:11px}
+.krow .kacts{grid-row:1/3;grid-column:2;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:330px}
+.krow .kerr{grid-column:1/3;font-size:12px;color:var(--danger)}
+.kadd{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:8px;margin-top:6px}
+@media (max-width:760px){.kadd{grid-template-columns:1fr}.krow{grid-template-columns:1fr}.krow .kacts{grid-row:auto;grid-column:1;justify-content:flex-start}}
+
+.rsc{display:grid;gap:7px;padding:10px 0 2px}
+.rrow{display:grid;grid-template-columns:34px 1fr 38px 76px;align-items:center;gap:8px;font-size:12px}
+.rl{color:var(--muted);font-weight:600} .rv{text-align:right;font-variant-numeric:tabular-nums} .rx{color:var(--muted);font-size:11px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar{height:6px;border-radius:4px;background:var(--panel2);overflow:hidden} .rbar i{display:block;height:100%;border-radius:4px;background:var(--on);transition:width .6s}
+.rbar i.mid{background:var(--warn)} .rbar i.hi{background:var(--danger)}
+
+.clipbar{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:12px}
+.clipbar code{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+
+.srvtag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px;background:rgba(124,108,255,.18);color:var(--accent2);vertical-align:2px}
+
+.hbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.hbar .hl{font-size:12px;color:var(--muted);font-weight:600} .hbar select{max-width:260px} .hbar .hcount{font-size:12px;color:var(--muted)}
+.ci .cpcs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px} .ci .cpcs span{font-size:10px;padding:1px 6px;border-radius:6px;background:var(--panel2);color:var(--muted)}
+.cmain{position:relative}
+.tobottom{position:absolute;right:20px;bottom:96px;z-index:5;border-radius:999px;padding:7px 14px;font-size:12px;box-shadow:0 4px 16px var(--shadow);display:none;background:var(--panel2);border:1px solid var(--border)}
+.tobottom.show{display:block}
+
+.cpcbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;min-height:40px}
+.cpcbar .lb{color:var(--muted);font-weight:600;margin-right:2px}
+.cpcbar .pc{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:var(--panel2);cursor:default;white-space:nowrap}
+.cpcbar .pc.click{cursor:pointer} .cpcbar .pc.click:hover{border-color:var(--accent)}
+.cpcbar .dot{width:8px;height:8px;border-radius:50%;background:var(--off)} .cpcbar .online .dot{background:var(--on);box-shadow:0 0 6px var(--on)}
+.cpcbar .reachable .dot{background:var(--reach)} .cpcbar .unreachable .dot{background:var(--warn)} .cpcbar .roff .dot{background:var(--off)}
+.cpcbar .st{color:var(--muted)} .cpcbar .sum{margin-left:auto;color:var(--muted)}
+
+body.solo #app{display:none!important} body.solo{overflow:hidden}
+body.solo #screenModal{background:var(--bg);padding:0;place-items:stretch}
+body.solo #screenModal .box{width:100vw!important;height:100vh;max-width:none;border-radius:0;border:0;display:flex;flex-direction:column}
+body.solo #screenWrap{flex:1;min-height:0} body.solo #screenImg{max-height:calc(100vh - 150px)}
+
+.fbar{display:flex;gap:6px;align-items:center;margin-top:10px} .fbar input{flex:1;font-family:Consolas,monospace;font-size:13px} .fbar select{width:auto}
+.fstat{font-size:12px;color:var(--muted);margin:8px 2px 4px;min-height:16px}
+.flist{border:1px solid var(--border);border-radius:10px;max-height:58vh;overflow:auto}
+.frow{display:grid;grid-template-columns:26px 1fr 96px 150px 92px;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px}
+.frow:last-child{border-bottom:0} .frow.sel{background:rgba(124,108,255,.16);outline:1px solid var(--accent)} .frow:hover{background:var(--panel2)} .frow.dir .fn{cursor:pointer;color:var(--text);font-weight:600}
+.frow .fn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .frow .fs,.frow .ft{color:var(--muted);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.fjobs{display:flex;flex-direction:column;gap:6px;margin-top:10px} .fjob{display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px}
+.fjob b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .fjob .ok{color:var(--on)} .fjob .bad{color:var(--danger)}
+@media (max-width:700px){.frow{grid-template-columns:22px 1fr 80px}.frow .ft,.frow .fa{display:none}}
+
+.card,.hcard,.panel{box-shadow:var(--card-shadow)}
+.themeseg{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:3px}
+.themeseg button{flex:1;border:0;background:none;padding:5px 8px;font-size:12px;border-radius:7px;color:var(--muted)}
+.themeseg button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 3px var(--shadow)}
+</style>
+</head>
+<body>
+<div class="layout" id="app" style="display:none">
+  <aside class="side">
+    <div class="brand"><div class="logo">🖥</div><div><b>PCmoa</b><small>같은 망 PC 연결 관리 v2.6</small></div></div>
+    <nav class="nav">
+      <a href="#" class="active" data-view="pcs"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>PC 목록</a>
+      <a href="#" data-view="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg>AI 대화</a>
+      <a href="#" data-view="cmds"><svg viewBox="0 0 24 24"><path d="M4 17l6-5-6-5"/><path d="M12 19h8"/></svg>명령 기록</a>
+      <a href="#" data-view="log"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>활동 로그</a>
+      <a href="#" data-view="help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.7"/><circle cx="12" cy="17.5" r=".6"/></svg>사용법</a>
+      <a href="#" data-view="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>설정</a>
+      <a href="#" data-view="accounts" class="adm hide"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.8-3.4 3.2-5.2 6-5.2s5.2 1.8 6 5.2"/><path d="M16 11h5M18.5 8.5v5"/></svg>계정 관리</a>
+    </nav>
+    <div class="foot">
+      <div class="conn" id="conn"><span><span class="dot"></span><span id="connText">연결 끊김</span></span><span id="whoami">-</span></div>
+      <div class="themeseg" id="themeSeg" title="화면 테마"><button type="button" data-t="system">시스템</button><button type="button" data-t="light">☀ 라이트</button><button type="button" data-t="dark">☾ 다크</button></div>
+      <button class="ghost" id="logoutBtn">로그아웃</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="head">
+      <div class="icon">⌁</div>
+      <div><h1><span id="pageTitle">PC 목록</span> <span class="badge" id="countBadge">0 / 0</span></h1><p id="pageSub">같은 대역 PC의 실시간 상태</p></div>
+      <div class="spacer"></div>
+      <div class="tb op"><button id="aiBtn" title="자연어로 적으면 AI가 PC별 명령 계획을 만들고, 검토 후 실행">✦ AI 명령</button><button id="batchBtn" disabled>선택 PC에 명령 (0)</button><button id="moveBtn" disabled>그룹 이동</button></div>
+      <div class="tb"><button id="refreshBtn" title="새로고침">↻</button></div>
+      <div class="tb op"><button class="primary" id="pairBtn">⚡ PC 연결</button><button id="addBtn" title="IP로 직접 추가">+ IP</button></div>
+    </div>
+
+    <section id="view-pcs">
+      <div class="tip compact"><span style="color:var(--on)">● 온라인</span> 제어 가능 · <span style="color:var(--reach)">● 응답 있음</span> 켜져 있으나 제어 경로 없음 · <span style="color:var(--orange)">● 응답 없음</span> 꺼졌거나 방화벽 (전원 꺼짐으로 단정하지 않음) · 체크로 여러 PC 일괄 명령</div>
+      <div class="gtabs" id="gtabs"></div>
+      <div class="filters">
+        <div class="row"><span style="color:var(--muted)">⛉</span><input id="q" placeholder="이름, IP, 호스트명 검색..." style="flex:1"></div>
+        <div class="row">
+          <div class="chips" id="stateChips">
+            <span class="chip active" data-f="all">전체</span><span class="chip" data-f="online">온라인</span><span class="chip" data-f="reachable">응답 있음</span><span class="chip" data-f="unreachable">응답 없음</span><span class="chip" data-f="agent">에이전트</span><span class="chip" data-f="ssh">SSH</span><span class="chip" data-f="winrm">PS원격</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty" style="display:none"><div class="ico">⌁</div><h3>아직 등록된 PC가 없습니다</h3><p>"PC 연결"로 코드를 발급해 다른 PC에서 넣거나, "IP로 추가"로 직접 등록하세요.</p></div>
+    </section>
+
+    <section id="view-chat" style="display:none">
+      <div class="chat">
+        <aside class="clist"><button class="primary" id="chatNew" style="width:100%">+ 새 대화</button><select class="pcFilter" style="width:100%;margin-top:8px" title="그 PC를 다룬 대화만"></select><div id="chatList"></div></aside>
+        <div class="cmain">
+          <div class="chead2"><b id="chatTitle">대화를 선택하거나 새로 만드세요</b><span style="flex:1"></span>
+            <div class="seg" id="chatMode" title="자동 모드여도 삭제·설치·종료·설정 변경·허용 안 된 폴더는 항상 물어봅니다"><button type="button" data-m="manual">수동</button><button type="button" data-m="auto">자동</button></div>
+            <label class="cauto" id="chatAutoWrap"><input type="checkbox" id="chatAuto"> 캡처 자동 승인</label>
+            <button class="ghost sm" id="chatRename">이름 변경</button><button class="ghost sm danger" id="chatDel">삭제</button></div>
+          <div class="cpcbar" id="chatPcBar"></div>
+          <div class="cdirs" id="chatDirs"></div>
+          <div class="cmsgs" id="chatMsgs"><div class="cempty">예) "org PC에서 VS Code로 C:\\work\\app.py 열고 잘 열렸는지 확인해줘"<br>"모든 PC 디스크 남은 용량 알려줘" · "inbox의 run.py 실행해줘"<br><span>PC에 명령·캡처를 할 때는 대화 안에 승인 카드가 뜨고, 승인해야 실행됩니다.</span></div></div>
+          <button type="button" class="tobottom" id="chatBottom" title="맨 아래로">↓ 맨 아래로</button>
+          <form class="cinput" id="chatForm"><textarea id="chatText" rows="2" placeholder="PC에 시킬 일을 적으세요 (Enter 전송, Shift+Enter 줄바꿈)"></textarea><button class="primary" id="chatSend">전송</button></form>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-accounts" style="display:none">
+      <div class="acct-bar">
+        <input id="acctQ" placeholder="아이디 검색…" style="max-width:260px">
+        <div class="chips" id="acctRole"><span class="chip active" data-r="">전체</span><span class="chip" data-r="admin">admin</span><span class="chip" data-r="operator">operator</span><span class="chip" data-r="viewer">viewer</span></div>
+        <span style="flex:1"></span>
+        <label class="cauto"><input type="checkbox" id="allowSignup"> 회원가입 허용</label>
+        <button class="primary" id="acctAdd">+ 계정 추가</button>
+      </div>
+      <div class="hcard" style="padding:0;overflow:auto"><table class="tbl acct" id="acctTbl"></table></div>
+      <p class="note" style="font-size:12px;color:var(--muted)">권한 — <b>admin</b>: 전부 + 계정 관리 · <b>operator</b>: 자기 PC 관리·명령·AI · <b>viewer</b>: 자기 PC 보기만. 변경은 즉시 반영됩니다. 마지막 admin은 내리거나 삭제할 수 없습니다.</p>
+    </section>
+
+    <section id="view-cmds" style="display:none"><div class="hbar"><span class="hl">PC</span><select class="pcFilter"></select><span class="hcount"></span></div><div class="results" id="cmdList" style="max-height:none"></div></section>
+    <section id="view-log" style="display:none"><div class="hbar"><span class="hl">PC</span><select class="pcFilter"></select><span class="hcount"></span></div><div class="log" id="log"></div></section>
+
+    <section id="view-help" style="display:none" class="help">
+      <div class="hcard"><h3>1. 추가할 PC의 IP·MAC 주소 확인하기</h3>
+        <p>추가하려는 <b>그 PC에서</b> PowerShell(또는 Linux 터미널)을 열고:</p>
+        <pre>ipconfig /all          # Windows
+ip addr                # Linux</pre>
+        <p>결과에서 <b>"이더넷 어댑터 이더넷"</b>(무선이면 "Wi-Fi")을 찾습니다. <code>vEthernet (WSL)</code>, <code>VMware</code>, <code>VirtualBox</code> 같은 가상 어댑터는 무시하세요.</p>
+        <table><tr><th>ipconfig 항목</th><th>PC 추가 칸</th><th>예시</th></tr>
+          <tr><td>IPv4 주소</td><td>IP 주소</td><td>192.168.0.11</td></tr>
+          <tr><td>물리적 주소</td><td>MAC 주소</td><td>A1-B2-C3-D4-E5-F6 (하이픈·콜론 모두 가능)</td></tr>
+          <tr><td>호스트 이름 (맨 위 "Windows IP 구성")</td><td>호스트명 / 이름</td><td>office-pc-02</td></tr></table>
+        <p>한 줄로 뽑으려면 (Windows):</p>
+        <pre>Get-NetIPConfiguration | Where {$_.IPv4DefaultGateway} | Select InterfaceAlias, IPv4Address
+Get-NetAdapter | Where Status -eq Up | Select Name, MacAddress</pre>
+        <p class="note">IP만 있어도 상태 확인은 됩니다. MAC은 "켜기"(Wake-on-LAN)에만 필요합니다.</p></div>
+
+      <div class="hcard"><h3>2. 옆 PC IP 빠르게 추정하기</h3>
+        <p>이 서버 PC는 <code class="srvip">-</code>, 호스트명 <code class="srvhost">-</code>입니다. 호스트명 끝 번호와 IP 끝자리가 같은 망이면 옆 PC는 <code><span class="srvnet">-</span>.<b>자리번호</b></code>로 바로 넣어 볼 수 있습니다.</p>
+        <p>켜져 있는 PC만 보려면 이 PC에서:</p>
+        <pre>Get-NetNeighbor -AddressFamily IPv4 | Where {$_.IPAddress -like '<span class="srvnet">-</span>.*' -and $_.State -ne 'Unreachable'} | Select IPAddress, LinkLayerAddress</pre>
+        <p class="note"><code>LinkLayerAddress</code>가 그 PC의 MAC 주소라, 옆 PC에 가지 않고도 IP와 MAC을 한 번에 얻습니다.</p></div>
+
+      <div class="hcard"><h3>3. 연결 방식은 하나 — "자동"</h3>
+        <p>PC를 추가할 때 방식을 고를 필요가 없습니다. 서버가 5초마다 아래 순서로 <b>되는 경로를 골라</b> 카드 배지에 표시하고, 명령·파일은 그 경로로 갑니다. 사람은 <b>계정(사용자명·비밀번호)</b>만 넣어 두면 됩니다.</p>
+        <table><tr><th>순서</th><th>경로</th><th>상대 PC에 필요한 것</th><th>할 수 있는 것</th></tr>
+          <tr><td>1</td><td><b>에이전트</b></td><td>agent 폴더 + Python, 1회 등록</td><td>상태(CPU·메모리), 명령, 파일, 끄기/재부팅. 계정 불필요, 아웃바운드만 써서 방화벽에 강함</td></tr>
+          <tr><td>2</td><td><b>SSH</b></td><td>OpenSSH 서버 켜기 (Linux 기본, Windows는 아래 5번). 설치 없음</td><td>명령, 파일, 끄기/재부팅</td></tr>
+          <tr><td>3</td><td><b>PowerShell 원격 (WinRM)</b></td><td>Windows 기본 기능. 관리자 PowerShell에서 <code>Enable-PSRemoting -Force</code> 한 줄</td><td>명령, 파일(10MB까지), 끄기/재부팅</td></tr>
+          <tr><td>4</td><td><b>상태만</b></td><td>없음</td><td>ping·포트로 응답 여부만. 명령 버튼 비활성</td></tr></table>
+        <p class="note">특정 경로만 쓰고 싶으면 편집에서 "에이전트만 / SSH만 / PowerShell 원격만 / 상태만"으로 고정할 수 있습니다. PowerShell 원격은 같은 워크그룹의 로컬 계정이면 상대 PC에서 <code>Set-Item WSMan:\localhost\Client\TrustedHosts -Value '<span class="srvip">-</span>'</code> 이 추가로 필요할 수 있습니다.</p></div>
+
+      <div class="hcard"><h3>4. 가장 쉬운 연결 — "PC 연결" 코드</h3>
+        <p>상단 <b>⚡ PC 연결</b> → 이름 입력 → 6자리 코드. 화면에 뜨는 주소(<code>http://<span class="srvip">-</span>:8000/connect?code=숫자</code>)를 연결할 PC에서 열고 "연결 시작" → 받은 파일을 실행하면 끝입니다. 주소·코드 입력 없음. Windows 계정·비밀번호가 필요 없고, 자동 시작까지 등록됩니다. (아래는 관리자용 일괄 등록 방법)</p></div>
+      <div class="hcard"><h3>4-1. 관리자용 — 등록 토큰으로 일괄 등록</h3>
+        <p>① 메인 PC(서버)에서 방화벽 8000 포트 허용 — 관리자 PowerShell:</p>
+        <pre>New-NetFirewallRule -DisplayName "PC Manager" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow</pre>
+        <p>② 다른 PC에 <code>agent</code> 폴더를 복사하고 최초 1회 등록:</p>
+        <pre>pip install psutil
+python agent.py --server http://<span class="srvip">-</span>:8000 --enroll <span class="srvtoken">(관리자만 표시)</span></pre>
+        <p>등록되면 그 PC 전용 토큰이 <code>agent.json</code>에 저장되고, 이후엔 <code>python agent.py --server http://<span class="srvip">-</span>:8000</code> 만으로 실행됩니다. 토큰은 설정 탭의 PC 목록에서 언제든 폐기·재발급할 수 있습니다.</p>
+        <p class="note">Linux도 같습니다. 부팅 시 자동 실행은 Windows 작업 스케줄러 / Linux systemd에 등록하세요 (2차).</p></div>
+
+      <div class="hcard"><h3>5. 계정 방식 — 상대 PC에 OpenSSH 또는 PowerShell 원격 켜기</h3>
+        <p><b>가장 쉬운 길 (Windows)</b>: 관리자 PowerShell에서 <code>Enable-PSRemoting -Force</code> 한 줄. 설치 없이 바로 됩니다. 그다음 PC 추가에서 계정만 넣으면 경로가 "PS원격"으로 잡힙니다.</p>
+        <p><b>SSH를 쓰려면</b>:</p>
+        <p><b>Windows</b> (관리자 PowerShell):</p>
+        <pre>Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Start-Service sshd; Set-Service sshd -StartupType Automatic
+New-NetFirewallRule -Name sshd -DisplayName "OpenSSH" -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow</pre>
+        <p><b>Linux</b>: <code>sudo apt install openssh-server</code> (대부분 기본 설치).</p>
+        <p>그다음 PC 추가/편집에서 사용자명(그 PC의 로그인 계정), 비밀번호 또는 메인 PC에 있는 개인키 경로(예: <code>C:\Users\me\.ssh\id_ed25519</code>)를 넣습니다. 비밀번호는 암호화해 저장되며 화면에 다시 표시되지 않습니다. 키 인증을 권장합니다.</p></div>
+
+      <div class="hcard"><h3>6. 명령·파일 전송</h3>
+        <ul><li>카드의 <b>명령</b> 버튼 → 명령을 입력하고 실행. Windows는 PowerShell, Linux는 bash로 돌고 출력이 돌아옵니다 (기본 60초 제한).</li>
+          <li>같은 창에서 파일을 끌어다 놓으면 상대 PC의 <code>~/pcmanager/inbox/</code>에 저장됩니다 (100MB 이하, SHA-256 검증). 받은 파일은 명령으로 바로 실행할 수 있습니다: <code>python inbox/run.py</code></li>
+          <li>카드 왼쪽 체크박스로 여러 PC를 고르면 상단 <b>"선택 PC에 명령"</b>으로 한 번에 보냅니다. 실행 전에 대상 목록을 확인합니다.</li>
+          <li>모든 명령은 <b>명령 기록</b> 탭에 요청자·대상·시각·종료 코드·출력과 함께 남습니다.</li></ul></div>
+
+      <div class="hcard"><h3>7. "켜기"(Wake-on-LAN)가 안 될 때</h3>
+        <ul><li>MAC 주소가 등록돼 있어야 버튼이 활성화됩니다</li>
+          <li>상대 PC BIOS의 Wake on LAN, 장치 관리자 → 네트워크 어댑터 → 전원 관리의 "매직 패킷으로 절전 해제"가 켜져 있어야 합니다</li>
+          <li>같은 서브넷에서만 동작합니다</li></ul></div>
+    </section>
+
+    <section id="view-settings" style="display:none" class="help">
+      <div class="hcard"><h3>서버</h3><p>서버: <b id="serverName">-</b> · 로그인: <b id="userName">-</b> (<span id="userRole">-</span>)</p>
+        <p id="enrollRow" class="hide" style="display:none">에이전트 등록 토큰: <code id="enrollToken">-</code> <button class="sm" id="copyEnroll">복사</button></p>
+        <p class="note">PC 연결은 상단 ⚡ PC 연결의 코드로만 합니다. 토큰은 서버가 자동으로 관리하며, 같은 PC는 토큰이 바뀌어도 스스로 다시 붙습니다.</p>
+        <p class="note">권한 — admin: 전부 / operator: PC 추가·명령·전원 / viewer: 조회만</p></div>
+      <div class="hcard op"><h3>내 API 키 <span style="font-weight:400;font-size:12px;color:var(--muted)">이 계정 전용</span></h3>
+        <p class="note">키를 여러 개 등록해 두고 하나를 골라 씁니다(AI 명령·AI 대화). 키마다 모델과 사용량(요청 수·토큰)이 따로 쌓입니다. 키는 서버의 <code>server/api_keys/</code>에 계정별로 암호화되어 저장되고 Git에는 올라가지 않으며, 화면에는 앞뒤 일부만 보입니다.</p>
+        <div id="keyTotal" class="ksum">-</div>
+        <div id="keyList"></div>
+        <form id="keyAdd" class="kadd"><input name="name" placeholder="이름 (예: 개인, 팀 공용)" maxlength="40"><input name="key" type="password" placeholder="sk-ant-…" autocomplete="off"><input name="model" placeholder="모델 (기본 claude-sonnet-5-5)"><button class="primary">+ 키 추가</button></form>
+        <div id="keyTestResult" style="font-size:13px;margin-top:8px"></div></div>
+      <div class="hcard"><h3>내 비밀번호 변경</h3>
+        <form id="pwForm" class="row2"><input name="old" type="password" placeholder="현재 비밀번호" required><input name="new" type="password" placeholder="새 비밀번호 (6자 이상)" required><div></div><div style="text-align:right"><button class="primary">변경</button></div></form></div>
+
+      
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="loginModal"><form class="box" id="loginForm"><h2 id="loginTitle">로그인</h2>
+  <label>아이디</label><input name="username" autocomplete="username" required>
+  <label>비밀번호</label><input name="password" type="password" autocomplete="current-password" required>
+  <div id="pw2Wrap" class="hide"><label>비밀번호 확인</label><input name="password2" type="password" autocomplete="new-password"></div>
+  <div class="note" id="signupNote" style="font-size:12px;color:var(--muted)" hidden>아이디는 영문·숫자·_ . - 3~20자, 비밀번호 6자 이상. 계정마다 자기 PC·대화·API 키만 보입니다.</div>
+  <div class="err" id="loginErr"></div>
+  <div class="actions" style="justify-content:space-between"><a href="#" id="toSignup" style="font-size:13px;color:var(--accent2)">회원가입</a><button class="primary" type="submit" id="loginSubmit">로그인</button></div></form></div>
+
+<div class="modal" id="addModal"><form class="box" id="addForm"><h2 id="addTitle">PC 추가</h2>
+  <input type="hidden" name="id">
+  <div class="row2"><div><label>이름</label><input name="name" placeholder="예: office-pc-02"></div><div><label>IP 주소 (또는 호스트명만)</label><input name="ip" placeholder="192.168.0.11"></div></div>
+  <div class="row2"><div><label>호스트명 (선택)</label><input name="hostname" placeholder="office-pc-02"></div><div><label>MAC (선택, 켜기용)</label><input name="mac" placeholder="AA:BB:CC:DD:EE:FF"></div></div>
+  <label>그룹</label><select name="group_id" class="groupSel"></select>
+  <label>연결 방식</label>
+  <select name="method"><option value="auto">자동 (권장) — 에이전트 → SSH → PowerShell 원격 → 상태만 순으로 되는 것을 씀</option><option value="agent">에이전트만</option><option value="ssh">SSH만</option><option value="winrm">PowerShell 원격(WinRM)만</option><option value="none">상태만 (ping·포트 확인)</option></select>
+  <div id="sshFields">
+    <label style="margin-top:4px">상대 PC 계정 (선택 — 에이전트 없이 명령·파일을 보내려면 필요. SSH와 PowerShell 원격에 공통으로 씀)</label>
+    <div class="row2"><div><label>사용자명</label><input name="ssh_user" placeholder="그 PC의 로그인 계정"></div><div><label>SSH 포트</label><input name="ssh_port" value="22"></div></div>
+    <div class="row2"><div><label>비밀번호 (암호화 저장)</label><input name="ssh_password" type="password" placeholder="비워두면 기존 값 유지"></div><div><label>또는 SSH 개인키 경로 (서버 PC 기준)</label><input name="ssh_key_path" placeholder="C:\Users\me\.ssh\id_ed25519"></div></div>
+  </div>
+  <div id="agentNote" class="tip" style="margin:0">에이전트가 있는 PC는 계정 없이도 됩니다 — 그 PC에서 <code>agent.py --enroll</code>로 등록하면 같은 IP에 합쳐지고 경로가 "에이전트"로 바뀝니다.</div>
+  <div class="err" id="addErr"></div>
+  <div class="actions"><button type="button" class="ghost" id="addCancel">취소</button><button class="primary" type="submit" id="addSubmit">추가</button></div></form></div>
+
+<div class="modal" id="pairModal"><div class="box"><h2>PC 연결</h2>
+  <p style="margin:0;color:var(--muted);font-size:13px">연결하고 싶은 PC에서 코드만 넣으면 등록됩니다. Windows 계정·비밀번호는 쓰지 않습니다.</p>
+  <label>그 PC를 부를 이름</label><input id="pairName" placeholder="예: office-pc-02, 집 데스크톱">
+  <label>넣을 그룹</label><select id="pairGroup" class="groupSel"></select>
+  <div class="actions"><button type="button" class="ghost" id="pairClose">닫기</button><button class="primary" id="pairIssue">연결 코드 발급</button></div>
+  <div class="tip" style="margin:10px 0 0;display:flex;align-items:center;gap:10px"><div style="flex:1"><b>메인 PC(이 서버가 도는 PC)도 목록에 넣기</b><br><span style="color:var(--muted);font-size:12px">코드 없이 바로 등록하고 연결 프로그램을 띄웁니다. 메인 PC를 켤 때 자동으로 연결됩니다.</span></div><button type="button" class="sm" id="addSelf">메인 PC 추가</button></div>
+  <div id="pairResult" class="hide">
+    <div style="text-align:center;margin:8px 0"><div style="font-size:40px;font-weight:700;letter-spacing:8px;color:var(--accent2)" id="pairCode">------</div><div style="font-size:12px;color:var(--muted)"><span id="pairLeft">10:00</span> 안에 사용 · 1회용</div></div>
+    <div class="tip" style="margin:0"><b>연결할 PC에서 이 주소를 열고 "연결 시작" → 받은 파일 실행. 끝.</b><br><code id="pairUrl" style="font-size:14px">http://-/connect?code=-</code> <button class="sm" id="copyPairUrl" type="button">복사</button><br><span style="color:var(--muted)">주소·코드 입력 없음, 자동 시작 등록까지 포함. Python이 없는 PC도 서버에 python-embed.zip이 있으면 자동 처리.</span></div>
+    <div class="tip" style="margin:0;color:var(--muted)">수동: <code id="pairCmd">python agent.py --server http://- --code ------</code></div>
+  </div>
+</div></div>
+
+<div class="modal" id="groupModal"><form class="box" id="groupForm"><h2 id="groupTitle">새 그룹</h2>
+  <input type="hidden" name="id">
+  <label>이름</label><input name="name" placeholder="예: 사무실, 우리집, 프로젝트 A" required>
+  <label>종류</label><select name="kind"><option value="personal">개인 공간 — 전원 제어 허용</option><option value="public">공공장소 — 전원 제어 기본 차단 (기관 PC 등)</option></select>
+  <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="allow_power" style="width:16px;height:16px;accent-color:var(--accent)"> 이 그룹에서 켜기/끄기/재부팅 허용</label>
+  <div class="err" id="groupErr"></div>
+  <div class="actions"><button type="button" class="danger ghost hide" id="groupDel">그룹 삭제</button><div style="flex:1"></div><button type="button" class="ghost" id="groupCancel">취소</button><button class="primary" type="submit">저장</button></div></form></div>
+
+<div class="modal" id="screenModal"><div class="box" style="width:min(96vw,1320px);padding:14px">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h2 id="screenTitle" style="margin:0;font-size:16px">화면</h2>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)"><input type="checkbox" id="screenCtl" style="width:16px;height:16px;accent-color:var(--accent)">조종 (마우스·키보드)</label>
+    <span id="screenInfo" style="font-size:12px;color:var(--muted)">연결 중…</span><button type="button" class="sm" id="screenElev" style="display:none" title="그 PC에 UAC 확인 창이 뜹니다 — 그 PC 앞에서 '예'를 눌러야 합니다">관리자 권한으로 전환</button><div style="flex:1"></div>
+    <button type="button" class="ghost" id="screenFiles" title="이 PC의 파일을 둘러보고 내려받기">파일</button><button type="button" class="ghost" id="screenPop" title="따로 창으로 열어 Manager와 함께 쓰기">새 창으로</button><button type="button" class="ghost" id="screenFull" title="전체 화면 (Esc로 해제)">전체 화면</button><button type="button" class="ghost" id="screenClose">닫기</button></div>
+  <div id="screenWrap"><img id="screenImg" draggable="false" alt=""><textarea id="screenKbd" autocomplete="off" spellcheck="false"></textarea>
+    <div id="screenWait">에이전트가 화면 전송을 시작하길 기다리는 중 (최대 5초)…</div></div>
+  <div id="clipBar" class="clipbar" style="display:none"><span>📋 상대 PC에서 복사됨</span><code id="clipPrev"></code><button type="button" class="sm primary" id="clipCopy">내 PC로 복사</button><button type="button" class="sm" id="clipHide">닫기</button></div>
+  <p class="note" style="margin:8px 0 0">클립보드(글자만): 조종 중 상대 PC에서 복사하면 내 PC로 오고, 이 화면에서 Ctrl+V 하면 내 PC에서 복사한 글이 상대 PC에 붙여넣어집니다.<br>조종을 켜면 이 화면을 클릭한 뒤 입력이 그 PC로 갑니다. 한글은 이 PC의 입력기로 조합해 보내면 그대로 입력됩니다. 상대 PC의 연결 창에는 누가 보고 있는지 표시됩니다.</p>
+</div></div>
+<div class="modal" id="fileModal"><div class="box" style="width:min(96vw,980px);padding:14px">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="fileTitle" style="margin:0;font-size:16px">파일</h2>
+    <span style="font-size:12px;color:var(--muted)">그 PC의 파일·폴더를 이 PC(브라우저)로 내려받습니다 · 폴더는 zip으로</span><div style="flex:1"></div>
+    <button type="button" class="ghost" id="fileClose">닫기</button></div>
+  <div class="fbar"><select id="fileDrive" title="드라이브"></select><button type="button" class="sm" id="fileUp" title="상위 폴더">↑</button><button type="button" class="sm" id="fileHome" title="사용자 폴더">⌂</button>
+    <input id="filePath" spellcheck="false" placeholder="경로 입력 후 Enter"><button type="button" class="sm" id="fileGo">이동</button><button type="button" class="sm" id="fileReload" title="새로고침">⟳</button></div>
+  <div id="fileStatus" class="fstat"></div>
+  <div class="flist" id="fileList"></div>
+  <div id="fileJobs" class="fjobs"></div>
+</div></div>
+<div class="modal" id="termModal"><div class="box" style="width:min(96vw,1100px);padding:14px">
+  <div style="display:flex;align-items:center;gap:12px"><h2 id="termTitle" style="margin:0;font-size:16px">터미널</h2><span id="termInfo" style="font-size:12px;color:var(--muted)"></span><select id="termShell" title="셸 고르기 — 바꾸면 새 셸로 다시 연결" style="display:none;width:auto;font-size:12px;padding:4px 8px"></select><div style="flex:1"></div><button type="button" class="ghost" id="termClose">닫기</button></div>
+  <div class="term" id="term"></div>
+  <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">SSH 경로는 진짜 터미널(PTY)이고, 에이전트 경로는 줄 단위로 전달됩니다(대화형 프로그램 제한, Ctrl+C는 셸 재시작). 모든 세션은 활동 로그에 남습니다.</p>
+</div></div>
+
+<div class="modal" id="aiModal"><div class="box wide"><h2>✦ AI 명령</h2>
+  <div class="tip" style="margin:0"><b>대상:</b> <span id="aiTargets">-</span> <span style="color:var(--faint)">(카드에서 체크한 PC. 없으면 온라인 PC 전부)</span></div>
+  <label>하고 싶은 일을 그냥 적으세요</label>
+  <textarea id="aiPrompt" placeholder="예: 각 PC의 디스크 남은 용량을 확인하고 10GB 미만인 PC를 알려줘&#10;예: inbox 폴더의 run.py를 실행하고 결과를 보여줘&#10;예: Python 버전을 확인하고 3.10 미만이면 알려줘"></textarea>
+  <div class="actions"><span id="aiStatus" style="font-size:12px;color:var(--muted);margin-right:auto"></span><button class="primary" id="aiPlan">계획 만들기</button></div>
+  <div id="aiPlanBox" class="hide">
+    <div class="tip" style="margin:0"><b id="aiSummary"></b><div id="aiQuestion" style="color:var(--warn)"></div></div>
+    <table class="tbl" id="aiSteps"></table>
+    <div class="actions"><span style="font-size:12px;color:var(--muted);margin-right:auto">명령은 수정할 수 있고, 체크한 것만 실행됩니다. 위험(high) 단계는 기본 해제.</span><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin-right:10px"><input type="checkbox" id="aiShot" checked style="width:15px;height:15px;accent-color:var(--accent)">실행 뒤 화면 캡처로 확인 (에이전트 PC)</label><button class="primary" id="aiRun">체크한 단계 실행</button></div>
+  </div>
+  <label>결과</label><div class="results" id="aiResults"></div>
+  <div class="actions"><button class="ghost" id="aiNext" disabled>결과를 보고 다음 단계 계획</button><button type="button" class="ghost" id="aiClose">닫기</button></div>
+</div></div>
+
+<div class="modal" id="cmdModal"><div class="box wide"><h2 id="cmdTitle">명령</h2>
+  <div class="tip" id="cmdTargets" style="margin:0"></div>
+  <label>명령 (Windows: PowerShell · Linux: bash)</label>
+  <textarea id="cmdText" placeholder="예: Get-Process | Select -First 5&#10;예: hostname; uptime"></textarea>
+  <div class="row2"><div><label>제한 시간(초)</label><input id="cmdTimeout" value="60"></div><div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:8px"><button class="primary" id="cmdRun">실행</button></div></div>
+  <div class="drop" id="drop">파일을 여기에 끌어다 놓거나 클릭해서 선택 — 상대 PC의 ~/pcmanager/inbox/ 로 전송 (100MB 이하)<input type="file" id="fileInput" class="hide"></div>
+  <div class="err" id="cmdErr"></div>
+  <label>결과</label><div class="results" id="cmdResults"></div>
+  <div class="actions"><button type="button" class="ghost" id="cmdClose">닫기</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const SOLO = new URLSearchParams(location.search).get('screen');
+let pcs = [], filter = 'all', ws = null, me = null, selected = new Set(), cmdTargets = [];
+const ICON = {
+  folder: '<svg viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></svg>',
+  screen: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  pc: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  remote: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  cmd: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>',
+  term: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/></svg>',
+  shot: '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  power: '<svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>'
+};
+const STATE_KO = { online: '온라인', reachable: '응답 있음', unreachable: '응답 없음', unknown: '확인 중' };
+const METHOD_KO = { auto: '자동', agent: '에이전트', ssh: 'SSH', winrm: 'WinRM', none: '상태만' };
+const CH_KO = { agent: '에이전트', ssh: 'SSH', winrm: 'PS원격', none: '경로 없음' };
+
+async function api(path, opt = {}) {
+  const isForm = opt.body instanceof FormData;
+  const r = await fetch(path, { headers: isForm ? {} : { 'Content-Type': 'application/json' }, ...opt });
+  if (r.status === 401 && !path.includes('/login')) { showLogin(); throw new Error('로그인이 필요합니다'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+}
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2600); }
+function ago(iso) { if (!iso) return '없음'; const s = (Date.now() - new Date(iso)) / 1000; return s < 60 ? `${Math.round(s)}초 전` : s < 3600 ? `${Math.round(s/60)}분 전` : `${Math.round(s/3600)}시간 전`; }
+function resBars(p) {
+  const row = (label, pct, extra, title) => {
+    const ok = pct != null && !isNaN(pct), v = ok ? Math.max(0, Math.min(100, pct)) : 0;
+    const lv = v >= 85 ? 'hi' : v >= 60 ? 'mid' : '';
+    return `<div class="rrow" title="${esc(title || '')}"><span class="rl">${label}</span><div class="rbar"><i class="${lv}" style="width:${v}%"></i></div><span class="rv">${ok ? Math.round(v) + '%' : '-'}</span>${extra ? `<span class="rx">${extra}</span>` : '<span class="rx"></span>'}</div>`;
+  };
+  const gb = (a, b) => a != null && b ? `${a.toFixed(1)}/${Math.round(b)}GB` : '';
+  return `<div class="rsc">${row('CPU', p.cpu, '')}${row('RAM', p.mem, gb(p.ram_used, p.ram_total))}${row('GPU', p.gpu, p.vram_total ? gb(p.vram_used, p.vram_total) : '', p.gpu == null ? 'GPU 사용률을 읽지 못했습니다 (에이전트 업데이트 대기 중이거나 지원되지 않는 GPU)' : (p.gpu_name || 'GPU'))}</div>`;
+}
+function up(sec) { if (!sec) return '-'; const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60); return h ? `${h}시간 ${m}분` : `${m}분`; }
+function can(role) { return ({ viewer: 0, operator: 1, admin: 2 })[me.role] >= ({ viewer: 0, operator: 1, admin: 2 })[role]; }
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+
+function render() {
+  const q = $('#q').value.trim().toLowerCase();
+  const list = pcs.filter(p => (curGroup === 'all' || (curGroup === 'none' ? p.group_id == null : p.group_id === curGroup)) && (filter === 'all' || (['agent','ssh','winrm'].includes(filter) ? p.channel === filter : p.state === filter)) &&
+    (!q || [p.name, p.ip, p.hostname].some(v => (v || '').toLowerCase().includes(q))));
+  const on = pcs.filter(p => p.state === 'online').length;
+  const b = $('#countBadge'); b.textContent = `${on} / ${pcs.length} 온라인`; b.classList.toggle('on', on > 0);
+  $('#empty').style.display = pcs.length ? 'none' : '';
+  selected = new Set([...selected].filter(id => pcs.some(p => p.id === id)));
+  $('#batchBtn').textContent = `선택 PC에 명령 (${selected.size})`; $('#batchBtn').disabled = !selected.size || !can('operator'); $('#moveBtn').disabled = !selected.size || !can('operator');
+  const op = can('operator');
+  $('#grid').innerHTML = list.map(p => {
+    const ctrl = p.state === 'online' && p.channel !== 'none' && !!p.remote_enabled;
+    const stKo = STATE_KO[p.state];
+    return `
+    <div class="card ${p.state} ${p.is_main ? 'main' : ''} ${selected.has(p.id) ? 'selected' : ''} ${p.remote_enabled ? '' : 'remote-off'}" data-id="${p.id}">
+      <div class="chead">
+        ${op ? `<input type="checkbox" class="sel" ${selected.has(p.id) ? 'checked' : ''} title="일괄 명령 대상">` : ''}
+        <div class="cicon">${ICON.pc}</div>
+        <div class="ctitle"><div class="name" title="${esc(p.name)}">${esc(p.name)}${p.is_main ? ' <span class="star" title="그룹 대표">★</span>' : ''}${p.is_server ? ' <span class="srvtag" title="대시보드 서버가 도는 PC">서버</span>' : ''}</div><div class="sub">${esc(p.os || 'OS 미확인')} · ${p.ip}</div></div>
+        <span class="sbadge ${p.state}">${stKo}</span>
+        ${op ? `<button class="more" data-act="menu" title="관리">⋯</button>` : ''}
+      </div>
+      <div class="kv"><span>IP 주소</span><b>${p.ip}</b><span>MAC 주소</span><b>${p.mac || '-'}</b><span>마지막 응답</span><b>${ago(p.last_seen)}</b><span>연결 방식</span><b>${CH_KO[p.channel]}${p.method !== 'auto' ? ` <i>(${METHOD_KO[p.method]} 고정)</i>` : ''}${p.source && p.channel === 'none' ? ` <i>· ${p.source}</i>` : ''}</b>${p.source === 'agent' ? `<span>가동 시간</span><b>${up(p.uptime)}</b>` : ''}</div>
+      ${p.source === 'agent' && p.state === 'online' ? resBars(p) : ''}
+      ${op ? `<div class="sect">PC 제어</div>
+      <button class="big ${p.remote_enabled ? 'off' : ''}" data-act="remote" title="${p.remote_enabled ? '이 PC로 가는 명령·터미널·캡처를 막습니다 (전원은 그대로)' : '원격 접속을 허용합니다'}">${ICON.remote} ${p.remote_enabled ? '원격 접속 끄기' : '원격 접속 시작'}</button>
+      <div class="b3 b5">
+        <button data-act="cmd" ${ctrl ? '' : 'disabled'} title="${ctrl ? '내가 쓴 명령을 한 번 실행하고 결과 받기 · 파일 보내기 (AI 아님)' : '원격 켜짐 + 제어 경로가 있을 때만'}">${ICON.cmd}<span>명령</span></button>
+        <button data-act="term" ${ctrl && p.channel !== 'winrm' ? '' : 'disabled'} title="${ctrl && p.channel !== 'winrm' ? '내가 직접 치는 대화형 터미널 (cd 유지, Tab 자동완성)' : '에이전트 또는 SSH 경로일 때만'}">${ICON.term}<span>터미널</span></button>
+        <button data-act="screen" ${ctrl && p.channel === 'agent' ? '' : 'disabled'} title="${ctrl && p.channel === 'agent' ? '그 PC 화면을 실시간으로 보고 마우스·키보드로 조종' : '에이전트가 켜진 PC만'}">${ICON.screen}<span>화면</span></button>
+        <button data-act="files" ${ctrl && p.channel === 'agent' ? '' : 'disabled'} title="${ctrl && p.channel === 'agent' ? '그 PC의 파일·폴더를 둘러보고 이 PC로 내려받기' : '에이전트가 켜진 PC만'}">${ICON.folder}<span>파일</span></button>
+        <button data-act="shot" ${ctrl && p.channel === 'agent' ? '' : 'disabled'} title="화면 한 장 캡처 (에이전트 PC만)">${ICON.shot}<span>캡처</span></button>
+      </div>
+      <div class="b3 low">
+        <button class="pwr" data-act="shutdown" ${ctrl ? '' : 'disabled'} title="PC 전원을 실제로 끕니다 (5초 뒤 종료)">${ICON.power} 전원 끄기</button>
+        <button data-act="main" ${p.is_main ? 'disabled' : ''} title="그룹 대표 PC로 지정 (목록 맨 앞 고정)">${ICON.star} 즐겨찾기</button>
+        <button data-act="menu" title="편집·진단·그룹 이동·삭제">${ICON.gear} 관리</button>
+      </div>` : ''}
+    </div>`; }).join('');
+}
+
+$('#grid').addEventListener('change', e => { const c = e.target.closest('.sel'); if (!c) return; const id = +c.closest('.card').dataset.id; c.checked ? selected.add(id) : selected.delete(id); render(); });
+$('#grid').addEventListener('click', async e => {
+  const btn = e.target.closest('button[data-act]'); if (!btn) return;
+  const id = +btn.closest('.card').dataset.id, act = btn.dataset.act, pc = pcs.find(p => p.id === id);
+  try {
+    if (act === 'cmd') openCmd([pc]);
+    if (act === 'term') openTerm(pc);
+    if (act === 'screen') popScreen(pc);
+    if (act === 'files') openFiles(pc);
+    if (act === 'menu') { openMenu(btn, pc); return; }
+    if (act === 'remote') { if (pc.remote_enabled && !confirm(`${pc.name}의 원격 접속을 끕니다. 상태만 보이고 명령·터미널·캡처는 막힙니다. (전원은 그대로)`)) return; await api(`/api/pcs/${id}/remote`, { method: 'POST', body: JSON.stringify({ enabled: !pc.remote_enabled }) }); toast(pc.remote_enabled ? '원격 접속을 껐습니다' : '원격 접속을 켰습니다'); }
+    if (act === 'shot') { const r = await api(`/api/pcs/${id}/screenshot`, { method: 'POST' }); openCmd([pc]); $('#cmdResults').innerHTML = resBox(pc, { ...r, output: '캡처 요청 — 에이전트가 올리면 여기에 표시됩니다' }); }
+    if (act === 'wake') { await api(`/api/pcs/${id}/wake`, { method: 'POST' }); toast('Wake-on-LAN 패킷을 보냈습니다'); }
+    if (act === 'shutdown') { if (confirm(`⚠ ${pc.name} (${pc.ip}) 의 전원을 실제로 끕니다 (5초 뒤 종료).\n작업 중인 내용이 저장되지 않을 수 있습니다.` + (pc.is_server ? '\n\n‼ 이 PC는 대시보드 서버입니다. 끄면 모든 PC 관리가 멈추고, 다시 켤 때까지 이 화면도 쓸 수 없습니다.' : '') + '\n계속할까요?')) { const r = await api(`/api/pcs/${id}/power`, { method: 'POST', body: JSON.stringify({ cmd: 'shutdown' }) }); toast(r.via === 'ssh' ? `SSH로 종료 명령 실행 (exit ${r.exit_code})` : '종료 명령을 큐에 넣었습니다'); } }
+    if (act === 'main') { await api(`/api/pcs/${id}/main`, { method: 'POST' }); toast(`${pc.name}을(를) 그룹 대표로 지정`); }
+    if (act === 'edit') openAdd(pc);
+    if (act === 'diag') { const d = await api(`/api/pcs/${id}/diagnose`); openCmd([pc]);
+      $('#cmdResults').innerHTML = `<div class="res"><div class="h"><b>경로 진단</b><span>설정 ${METHOD_KO[d.method]} → 판정 ${CH_KO[d.resolved]}</span></div><pre>${d.steps.map(s => `${s.ok ? '✔' : '✘'} ${esc(s.name)}${s.detail ? '  — ' + esc(s.detail) : ''}`).join('\n')}</pre></div>`; }
+    if (act === 'delete') { if (confirm(`${pc.name}을(를) 목록에서 삭제할까요?`)) await api(`/api/pcs/${id}`, { method: 'DELETE' }); }
+  } catch (err) { toast(err.message); }
+});
+$('#q').addEventListener('input', render);
+$('#stateChips').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; filter = c.dataset.f; $$('.chip').forEach(x => x.classList.toggle('active', x === c)); render(); });
+$('#refreshBtn').onclick = async () => { pcs = await api('/api/pcs'); render(); toast('새로고침'); };
+$('#batchBtn').onclick = () => openCmd(pcs.filter(p => selected.has(p.id)));
+
+// ---- 그룹
+let groupsList = [], curGroup = 'all';
+async function loadGroups() {
+  groupsList = await api('/api/groups');
+  const real = groupsList.filter(g => g.id != null);
+  const tabs = [`<span class="gtab ${curGroup === 'all' ? 'active' : ''}" data-g="all">전체 <span class="cnt">${pcs.length}</span></span>`]
+    .concat(real.map(g => `<span class="gtab ${curGroup === g.id ? 'active' : ''}" data-g="${g.id}">${esc(g.name)} <span class="kind">${g.kind === 'public' ? '공공' : '개인'}</span><span class="cnt">${g.online}/${g.pc_count}</span>${can('operator') ? `<span class="gedit" data-ge="${g.id}" title="그룹 설정">⚙</span>` : ''}</span>`))
+    .concat([`<span class="gtab ${curGroup === 'none' ? 'active' : ''}" data-g="none">미분류 <span class="cnt">${groupsList.find(g => g.id == null)?.pc_count ?? 0}</span></span>`]);
+  if (can('operator')) tabs.push(`<span class="gtab add" data-g="+">+ 새 그룹</span>`);
+  $('#gtabs').innerHTML = tabs.join('');
+  const opts = `<option value="">미분류</option>` + real.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  $$('.groupSel').forEach(sel => { const v = sel.value; sel.innerHTML = opts; sel.value = v; });
+}
+$('#gtabs').addEventListener('click', e => {
+  const ge = e.target.closest('.gedit'); if (ge) { e.stopPropagation(); openGroup(groupsList.find(g => g.id === +ge.dataset.ge)); return; }
+  const t = e.target.closest('.gtab'); if (!t) return;
+  if (t.dataset.g === '+') return openGroup(null);
+  curGroup = t.dataset.g === 'all' ? 'all' : t.dataset.g === 'none' ? 'none' : +t.dataset.g;
+  loadGroups(); render();
+});
+function openGroup(g) {
+  const f = $('#groupForm'); f.reset(); $('#groupErr').textContent = ''; f.id.value = g ? g.id : '';
+  $('#groupTitle').textContent = g ? `그룹 설정 — ${g.name}` : '새 그룹'; $('#groupDel').classList.toggle('hide', !g);
+  if (g) { f.name.value = g.name; f.kind.value = g.kind; f.allow_power.checked = !!g.allow_power; } else { f.allow_power.checked = true; }
+  f.kind.onchange = () => { if (!g) f.allow_power.checked = f.kind.value === 'personal'; };
+  $('#groupModal').classList.add('show'); f.name.focus();
+}
+$('#groupCancel').onclick = () => $('#groupModal').classList.remove('show');
+$('#groupForm').onsubmit = async e => {
+  e.preventDefault(); const f = e.target; const body = { name: f.name.value, kind: f.kind.value, allow_power: f.allow_power.checked };
+  try {
+    if (f.id.value) await api(`/api/groups/${f.id.value}`, { method: 'PUT', body: JSON.stringify(body) });
+    else { const r = await api('/api/groups', { method: 'POST', body: JSON.stringify(body) }); curGroup = r.id; }
+    $('#groupModal').classList.remove('show'); await loadGroups(); render();
+  } catch (err) { $('#groupErr').textContent = err.message; }
+};
+$('#groupDel').onclick = async () => { const id = $('#groupForm').id.value; if (!confirm('그룹을 삭제할까요? 안의 PC는 미분류로 옮겨집니다.')) return; await api(`/api/groups/${id}`, { method: 'DELETE' }); $('#groupModal').classList.remove('show'); curGroup = 'all'; await loadGroups(); render(); };
+$('#moveBtn').onclick = async () => {
+  const real = groupsList.filter(g => g.id != null);
+  const pick = prompt('옮길 그룹 번호를 입력하세요:\n' + ['0. 미분류'].concat(real.map((g, i) => `${i + 1}. ${g.name}`)).join('\n'));
+  if (pick == null) return; const n = +pick; if (isNaN(n) || n < 0 || n > real.length) return toast('번호가 잘못됐습니다');
+  const gid = n === 0 ? 0 : real[n - 1].id;
+  try { await api(`/api/groups/${gid}/pcs`, { method: 'POST', body: JSON.stringify({ pc_ids: [...selected] }) }); selected.clear(); toast('옮겼습니다'); await loadGroups(); render(); } catch (err) { toast(err.message); }
+};
+
+// ---- 브라우저 터미널
+let termObj = null, termWs = null;
+function copyText(t) {
+  if (!t) return;
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(() => toast('복사했습니다'), () => fallback()); return; }
+  fallback();
+  function fallback() {   // http 주소에서는 clipboard API가 막혀 있어 예전 방식으로 복사
+    const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+    document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('복사했습니다'); } catch { toast('복사하지 못했습니다'); }
+    ta.remove(); termObj && termObj.focus();
+  }
+}
+function openTerm(pc, shell) {
+  // 셸 고르기 (에이전트 경로): 그 PC가 알려 준 셸 중에서. 마지막으로 고른 것을 PC마다 기억
+  const shells = pc.channel === 'agent' ? (pc.shells || []) : [];
+  const key = 'term-shell-' + pc.id;
+  if (shell == null) { try { shell = localStorage.getItem(key) || ''; } catch { shell = ''; } }
+  if (!shells.some(x => x.id === shell)) shell = shells[0]?.id || '';
+  const sel = $('#termShell');
+  sel.innerHTML = shells.map(x => `<option value="${esc(x.id)}" ${x.id === shell ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  sel.style.display = shells.length > 1 ? '' : 'none';
+  sel.onchange = () => { try { localStorage.setItem(key, sel.value); } catch {} try { termWs && termWs.close(); } catch {} openTerm(pc, sel.value); };
+  $('#termTitle').textContent = `터미널 — ${pc.name}`; $('#termInfo').textContent = CH_KO[pc.channel]; $('#termModal').classList.add('show');
+  if (termObj) { termObj.dispose(); $('#term').innerHTML = ''; }
+  termObj = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'Consolas, "D2Coding", monospace', theme: { background: '#000000' }, convertEol: false });
+  const fit = new FitAddon.FitAddon(); termObj.loadAddon(fit); termObj.open($('#term')); fit.fit();
+  termWs = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + `/ws/term/${pc.id}` + (shell ? `?shell=${encodeURIComponent(shell)}` : ''));
+  const localEcho = pc.channel === 'agent';
+  let line = '';
+  termWs.onopen = () => { termWs.send(JSON.stringify({ type: 'resize', cols: termObj.cols, rows: termObj.rows })); };
+  let lastPrompt = '';
+  termWs.onmessage = m => {
+    if (m.data.startsWith('\x00C')) {            // 자동완성 결과
+      const end = m.data.indexOf('}') + 1; const { matches } = JSON.parse(m.data.slice(2, end)); const rest = m.data.slice(end);
+      const tok = (line.endsWith(' ') || !line) ? '' : line.split(/\s+/).pop();
+      if (matches.length === 1) { line = line.slice(0, line.length - tok.length) + matches[0]; termObj.write('\x1b[2K\r' + lastPrompt + line); }
+      else if (matches.length > 1) {
+        let common = matches[0]; for (const x of matches) { let i = 0; while (i < common.length && i < x.length && common[i] === x[i]) i++; common = common.slice(0, i); }
+        if (common.length > tok.length) line = line.slice(0, line.length - tok.length) + common;
+        termObj.write('\r\n' + matches.join('  ') + '\r\n' + lastPrompt + line);
+      }
+      if (rest) termObj.write(rest);
+      return;
+    }
+    termObj.write(m.data);
+    const nl = m.data.lastIndexOf('\n'); lastPrompt = nl >= 0 ? m.data.slice(nl + 1) : lastPrompt + m.data;
+    if (pasteBusy && /[$>#] $/.test(m.data)) pasteNext();
+  };
+  const myWs = termWs, myTerm = termObj;
+  termWs.onclose = () => { if (termWs === myWs && termObj === myTerm) termObj.write('\r\n[연결 끊김]\r\n'); };   // 셸을 바꿔 새로 연 창에는 찍지 않는다
+  // 복사·붙여넣기: 선택한 상태에서 Ctrl+C(또는 Ctrl+Shift+C)는 복사, 선택이 없으면 Ctrl+C는 중단 신호.
+  // Ctrl+V / Ctrl+Shift+V / Shift+Insert는 브라우저 붙여넣기. 오른쪽 클릭: 선택이 있으면 복사, 없으면 붙여넣기.
+  termObj.attachCustomKeyEventHandler(e => {
+    if (e.type !== 'keydown') return true;
+    const k = e.key.toLowerCase();
+    if (e.ctrlKey && k === 'c' && (e.shiftKey || termObj.hasSelection())) { copyText(termObj.getSelection()); termObj.clearSelection(); e.preventDefault(); return false; }
+    if ((e.ctrlKey && k === 'v') || (e.shiftKey && k === 'insert')) return false;   // xterm은 건너뛰고 브라우저가 paste 이벤트를 낸다
+    return true;
+  });
+  $('#term').oncontextmenu = async e => {
+    e.preventDefault();
+    if (termObj.hasSelection()) { copyText(termObj.getSelection()); termObj.clearSelection(); return; }
+    try { const t = await navigator.clipboard.readText(); if (t) termObj.paste(t); }
+    catch { toast('이 주소(http)에서는 오른쪽 클릭 붙여넣기가 막혀 있습니다 — Ctrl+V를 쓰세요'); }
+  };
+  let pasteQ = [], pasteBusy = false;
+  const pasteNext = () => {   // 여러 줄 붙여넣기: 한 줄 실행 → 프롬프트가 돌아오면 다음 줄 (출력이 섞이지 않게)
+    while (pasteQ.length) {
+      const { t, run } = pasteQ.shift();
+      if (t) { line += t; termObj.write(t); }
+      if (run) { pasteBusy = true; enter(); return; }
+    }
+    pasteBusy = false;
+  };
+  const enter = () => {
+    if (/^\s*(clear|cls|clear-host)\s*$/i.test(line)) { termObj.write('\x1b[2J\x1b[3J\x1b[H'); termObj.clear(); line = ''; termWs.send(JSON.stringify({ type: 'input', data: '\n' })); return; }   // 화면 지우기는 브라우저에서
+    termObj.write('\r\n'); termWs.send(JSON.stringify({ type: 'input', data: line + '\n' })); line = '';
+  };
+  termObj.onData(d => {
+    if (termWs.readyState !== 1) return;
+    if (localEcho && d.length > 1 && !d.startsWith('\x1b')) {   // 붙여넣은 글: 줄마다 실행, 마지막 줄은 입력 칸에 남긴다
+      const parts = d.replace(/\x1b\[20[01]~/g, '').replace(/\r\n|\n/g, '\r').split('\r');
+      parts.forEach((p, i) => pasteQ.push({ t: p.replace(/[\x00-\x1f]/g, ''), run: i < parts.length - 1 }));
+      if (!pasteBusy) pasteNext();
+      return;
+    }
+    if (localEcho) {   // 에이전트 경로: 줄 편집은 브라우저에서
+      if (d === '\r') enter();
+      else if (d === '\x7f') { if (line.length) { const w = /[\u1100-\uffdc]/.test(line.slice(-1)) ? 2 : 1; line = line.slice(0, -1); termObj.write('\b \b'.repeat(w)); } }
+      else if (d === '\x03') { pasteQ = []; pasteBusy = false; termObj.write('^C\r\n'); line = ''; termWs.send(JSON.stringify({ type: 'input', data: '\x03' })); }
+      else if (d === '\t') { termWs.send(JSON.stringify({ type: 'complete', line })); }
+      else if (d >= ' ') { line += d; termObj.write(d); }
+    } else termWs.send(JSON.stringify({ type: 'input', data: d }));
+  });
+  termObj.onResize(({ cols, rows }) => termWs.readyState === 1 && termWs.send(JSON.stringify({ type: 'resize', cols, rows })));
+  window.onresize = () => fit.fit();
+  termObj.focus();
+}
+$('#termClose').onclick = () => { $('#termModal').classList.remove('show'); if (termWs) termWs.close(); };
+
+// ---- 카드 관리 메뉴 (편집·진단·그룹 이동·삭제)
+function openMenu(anchor, pc) {
+  $('#cmenu')?.remove();
+  const m = document.createElement('div'); m.id = 'cmenu'; m.className = 'cmenu';
+  m.innerHTML = `<div data-m="hist">☰ 이 PC 기록 보기 (활동·명령·AI 대화)</div><div data-m="edit">✎ 편집 (이름·계정·연결 방식)</div><div data-m="diag">? 경로 진단</div><div data-m="move">⇄ 그룹 이동</div><div data-m="delete" class="danger">✕ 목록에서 삭제 (다시 연결하려면 새 코드 필요)</div>`;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(); m.style.top = (r.bottom + window.scrollY + 4) + 'px'; m.style.left = Math.min(r.left + window.scrollX, window.innerWidth - 240) + 'px';
+  m.onclick = async e => {
+    const k = e.target.closest('[data-m]')?.dataset.m; m.remove(); if (!k) return;
+    try {
+      if (k === 'hist') openHistory(pc, 'log');
+      if (k === 'edit') openAdd(pc);
+      if (k === 'diag') { const d = await api(`/api/pcs/${pc.id}/diagnose`); openCmd([pc]); $('#cmdResults').innerHTML = `<div class="res"><div class="h"><b>경로 진단</b><span>설정 ${METHOD_KO[d.method]} → 판정 ${CH_KO[d.resolved]}</span></div><pre>${d.steps.map(s => `${s.ok ? '✔' : '✘'} ${esc(s.name)}${s.detail ? '  — ' + esc(s.detail) : ''}`).join('\n')}</pre></div>`; }
+      if (k === 'move') { selected.clear(); selected.add(pc.id); render(); $('#moveBtn').click(); }
+      if (k === 'delete') { if (confirm(`${pc.name}을(를) 목록에서 삭제할까요?\n\nPC 자체에는 영향이 없지만 등록이 사라져, 다시 연결하려면 그 PC에서 새 연결 코드로 등록해야 합니다.\n잠깐 막고 싶은 거라면 '원격 접속 끄기'를 쓰세요.`)) await api(`/api/pcs/${pc.id}`, { method: 'DELETE' }); }
+    } catch (err) { toast(err.message); }
+  };
+  setTimeout(() => document.addEventListener('click', ev => { if (!m.contains(ev.target)) m.remove(); }, { once: true }), 0);
+}
+
+// ---- PC 추가/편집
+function openAdd(pc) {
+  const f = $('#addForm'); f.reset(); $('#addErr').textContent = '';
+  f.id.value = pc ? pc.id : ''; $('#addTitle').textContent = pc ? `PC 편집 — ${pc.name}` : 'PC 추가'; $('#addSubmit').textContent = pc ? '저장' : '추가';
+  f.ip.disabled = !!pc;
+  f.group_id.value = pc ? (pc.group_id ?? '') : (typeof curGroup === 'number' ? curGroup : '');
+  if (pc) { f.name.value = pc.name; f.ip.value = pc.ip; f.hostname.value = pc.hostname || ''; f.mac.value = pc.mac || ''; f.method.value = pc.method; f.ssh_user.value = pc.ssh_user || ''; f.ssh_port.value = pc.ssh_port || 22; f.ssh_key_path.value = pc.ssh_key_path || ''; f.ssh_password.placeholder = pc.has_ssh_pw ? '저장됨 — 바꾸려면 입력' : '비밀번호'; }
+  f.method.dispatchEvent(new Event('change'));
+  $('#addModal').classList.add('show'); f.name.focus();
+}
+$('#addForm').method.addEventListener('change', e => { $('#sshFields').classList.toggle('hide', e.target.value === 'none' || e.target.value === 'agent'); $('#agentNote').classList.toggle('hide', e.target.value === 'none' || e.target.value === 'ssh' || e.target.value === 'winrm'); });
+$('#addBtn').onclick = () => openAdd(null);
+let pairTimer = null;
+$('#pairBtn').onclick = () => { $('#pairResult').classList.add('hide'); $('#pairName').value = ''; $('#pairModal').classList.add('show'); $('#pairName').focus(); };
+$('#copyPairUrl').onclick = async () => { await navigator.clipboard.writeText($('#pairUrl').textContent); toast('복사했습니다'); };
+$('#addSelf').onclick = async () => {
+  const b = $('#addSelf'); b.disabled = true; b.textContent = '등록 중…';
+  try { const r = await api('/api/pcs/add-self', { method: 'POST', body: JSON.stringify({ group_id: +$('#pairGroup').value || null }) });
+    toast(r.already ? '메인 PC는 이미 목록에 있습니다 (연결 프로그램을 다시 띄웠습니다)' : `메인 PC를 추가했습니다: ${r.name}`); $('#pairModal').classList.remove('show'); clearInterval(pairTimer); }
+  catch (err) { toast(err.message); }
+  b.disabled = false; b.textContent = '메인 PC 추가';
+};
+$('#pairClose').onclick = () => { $('#pairModal').classList.remove('show'); clearInterval(pairTimer); };
+$('#pairIssue').onclick = async () => {
+  try {
+    const r = await api('/api/pair', { method: 'POST', body: JSON.stringify({ name: $('#pairName').value, group_id: $('#pairGroup').value ? +$('#pairGroup').value : null }) });
+    const srv = `http://${r.server_ip}:8000`;
+    $('#pairCode').textContent = r.code; $('#pairUrl').textContent = r.connect_url;
+    $('#pairCmd').textContent = `python agent.py --server ${srv} --code ${r.code}`;
+    $('#pairResult').classList.remove('hide');
+    let left = r.expires_in; clearInterval(pairTimer);
+    pairTimer = setInterval(() => { left--; $('#pairLeft').textContent = `${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`; if (left <= 0) { clearInterval(pairTimer); $('#pairLeft').textContent = '만료됨 — 다시 발급'; } }, 1000);
+  } catch (err) { toast(err.message); }
+};
+$('#addCancel').onclick = () => $('#addModal').classList.remove('show');
+$('#addForm').onsubmit = async e => {
+  e.preventDefault(); const f = e.target;
+  const body = { name: f.name.value, ip: f.ip.value, hostname: f.hostname.value, mac: f.mac.value, method: f.method.value, group_id: f.group_id.value ? +f.group_id.value : null, ssh_user: f.ssh_user.value, ssh_port: +f.ssh_port.value || 22, ssh_key_path: f.ssh_key_path.value, ssh_password: f.ssh_password.value };
+  try {
+    if (f.id.value) { await api(`/api/pcs/${f.id.value}`, { method: 'PUT', body: JSON.stringify(body) }); toast('저장했습니다'); }
+    else { const r = await api('/api/pcs', { method: 'POST', body: JSON.stringify(body) }); toast(`추가됨 · ${STATE_KO[r.state]}`); }
+    $('#addModal').classList.remove('show');
+  } catch (err) { $('#addErr').textContent = err.message; }
+};
+
+// ---- 명령·파일
+function openCmd(targets) {
+  cmdTargets = targets; $('#cmdErr').textContent = ''; $('#cmdResults').innerHTML = '';
+  $('#cmdTitle').textContent = targets.length === 1 ? `명령 — ${targets[0].name}` : `일괄 명령 — ${targets.length}대`;
+  $('#cmdTargets').innerHTML = '<b>대상:</b> ' + targets.map(p => `${esc(p.name)} <span style="color:var(--faint)">(${p.ip} · ${METHOD_KO[p.method]} · ${STATE_KO[p.state]})</span>`).join(', ');
+  $('#cmdModal').classList.add('show'); $('#cmdText').focus();
+}
+$('#cmdClose').onclick = () => $('#cmdModal').classList.remove('show');
+function resBox(pc, r) {
+  const id = `res-${r.id || Math.random()}`;
+  const cls = r.status === 'done' ? 'ok' : r.status === 'failed' ? 'bad' : 'wait';
+  const label = r.status === 'done' ? `완료 (exit ${r.exit_code ?? 0})` : r.status === 'failed' ? `실패 (exit ${r.exit_code ?? '-'})` : '대기 중 — 에이전트가 가져가면 갱신';
+  return `<div class="res" id="${id}" data-cmd="${r.id || ''}"><div class="h"><b>${esc(pc.name)}</b><span>${r.via || ''}</span><span class="${cls} status">${label}</span></div><pre>${esc(r.output || '')}</pre><div class="shot"></div></div>`;
+}
+$('#cmdRun').onclick = async () => {
+  const cmd = $('#cmdText').value.trim(), timeout = +$('#cmdTimeout').value || 60; $('#cmdErr').textContent = '';
+  if (!cmd) { $('#cmdErr').textContent = '명령을 입력하세요'; return; }
+  if (cmdTargets.length > 1 && !confirm(`${cmdTargets.length}대에 아래 명령을 실행합니다.\n\n${cmd}\n\n대상: ${cmdTargets.map(p => p.name).join(', ')}`)) return;
+  try {
+    const results = cmdTargets.length === 1
+      ? [{ pc_id: cmdTargets[0].id, ...(await api(`/api/pcs/${cmdTargets[0].id}/run`, { method: 'POST', body: JSON.stringify({ cmd, timeout }) })) }]
+      : await api('/api/run', { method: 'POST', body: JSON.stringify({ pc_ids: cmdTargets.map(p => p.id), cmd, timeout }) });
+    $('#cmdResults').insertAdjacentHTML('afterbegin', results.map(r => resBox(pcs.find(p => p.id === r.pc_id) || { name: r.pc_id }, r)).join(''));
+  } catch (err) { $('#cmdErr').textContent = err.message; }
+};
+async function sendFile(file) {
+  if (!file) return;
+  if (file.size > 100 * 1024 * 1024) { $('#cmdErr').textContent = '100MB를 넘는 파일은 보낼 수 없습니다'; return; }
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    toast(`${file.name} 업로드 중…`);
+    const up = await api('/api/files', { method: 'POST', body: fd });
+    for (const pc of cmdTargets) {
+      const fd2 = new FormData(); fd2.append('file_id', up.file_id);
+      const r = await api(`/api/pcs/${pc.id}/send`, { method: 'POST', body: fd2 });
+      $('#cmdResults').insertAdjacentHTML('afterbegin', resBox(pc, { ...r, output: r.output || `파일 ${file.name} (${up.size} bytes) 전송 요청` }));
+    }
+  } catch (err) { $('#cmdErr').textContent = err.message; }
+}
+const drop = $('#drop');
+drop.onclick = () => $('#fileInput').click();
+$('#fileInput').onchange = e => { sendFile(e.target.files[0]); e.target.value = ''; };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); sendFile(e.dataTransfer.files[0]); };
+
+async function refreshCmd(id) {   // 에이전트 결과가 WebSocket으로 오면 해당 결과 박스를 갱신
+  const box = document.querySelector(`.res[data-cmd="${id}"]`); if (!box) return;
+  const list = await api('/api/commands'); const c = list.find(x => x.id === id); if (!c) return;
+  const st = box.querySelector('.status'); st.className = 'status ' + (c.status === 'done' ? 'ok' : c.status === 'failed' ? 'bad' : 'wait');
+  st.textContent = c.status === 'done' ? `완료 (exit ${c.exit_code})` : c.status === 'failed' ? `실패 (exit ${c.exit_code})` : c.status === 'running' ? '실행 중' : '대기 중';
+  box.querySelector('pre').textContent = c.output || '';
+  if (c.has_shot) box.querySelector('.shot').innerHTML = `<a href="/api/commands/${c.id}/shot" target="_blank"><img src="/api/commands/${c.id}/shot?t=${Date.now()}" style="max-width:100%;border-radius:8px;margin-top:6px;border:1px solid var(--border)"></a>`;
+}
+async function renderCmds() {
+  fillPcFilters();
+  const list = await api('/api/commands' + (histPc ? `?pc_id=${histPc}` : ''));
+  $('#view-cmds .hcount').textContent = `${list.length}건${list.length >= 100 ? ' (최근 100건)' : ''}`;
+  $('#cmdList').innerHTML = list.map(c => `<div class="res"><div class="h"><b>${esc(c.pc_name || c.pc_id)}</b><span>${c.kind}</span><span>${esc(c.requested_by)}</span><time>${new Date(c.created_at).toLocaleString('ko-KR')}</time><span class="${c.status === 'done' ? 'ok' : c.status === 'failed' ? 'bad' : 'wait'}">${c.status}${c.exit_code != null ? ` (exit ${c.exit_code})` : ''}</span></div>${c.payload ? `<pre style="color:#8a8aa3">$ ${esc(c.payload)}</pre>` : ''}<pre>${esc(c.output || '')}</pre>${c.has_shot ? `<a href="/api/commands/${c.id}/shot" target="_blank"><img src="/api/commands/${c.id}/shot" style="max-width:420px;border-radius:8px;margin-top:6px;border:1px solid var(--border)"></a>` : ''}</div>`).join('') || '<div class="empty">명령 기록이 없습니다</div>';
+}
+
+
+// ---- 테마 (시스템·라이트·다크) — 브라우저마다 기억
+function themePref() { try { return localStorage.getItem('theme') || 'system'; } catch { return 'system'; } }
+function applyTheme(pref) {
+  const light = pref === 'light' || (pref === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f6f4fb' : '#0b0b12');
+  $$('#themeSeg button').forEach(b => b.classList.toggle('on', b.dataset.t === pref));
+}
+$('#themeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  try { localStorage.setItem('theme', b.dataset.t); } catch {}
+  applyTheme(b.dataset.t);
+});
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (themePref() === 'system') applyTheme('system'); });
+window.addEventListener('storage', e => { if (e.key === 'theme') applyTheme(themePref()); });   // 다른 창(화면 창)과 맞춘다
+applyTheme(themePref());
+
+// ---- PC별 기록 보기 (명령 기록·활동 로그·AI 대화가 같은 PC 선택을 공유)
+let histPc = 0;
+function fillPcFilters() {
+  const opts = '<option value="0">모든 PC</option>' + pcs.map(p => `<option value="${p.id}">${esc(p.name)} (${p.ip})</option>`).join('');
+  $$('.pcFilter').forEach(sel => { sel.innerHTML = opts; sel.value = String(pcs.some(p => p.id === histPc) ? histPc : 0); });
+}
+function refreshHistory() {
+  const v = $$('.nav a').find(a => a.classList.contains('active'))?.dataset.view;
+  if (v === 'cmds') renderCmds(); if (v === 'log') renderLog(); if (v === 'chat') { chat.sid = null; loadChats(); }
+}
+document.addEventListener('change', e => { if (!e.target.classList.contains('pcFilter')) return; histPc = +e.target.value; fillPcFilters(); refreshHistory(); });
+async function renderLog() {
+  fillPcFilters();
+  const ev = await api('/api/events' + (histPc ? `?pc_id=${histPc}&limit=500` : ''));
+  $('#view-log .hcount').textContent = `${ev.length}건`;
+  $('#log').innerHTML = ev.map(x => `<div><time>${new Date(x.created_at).toLocaleString('ko-KR')}</time>${esc(x.pc_name || '-')} · ${x.type} · ${esc(x.actor)} ${x.detail ? '· ' + esc(x.detail) : ''}</div>`).join('') || '<div style="color:var(--muted)">기록이 없습니다</div>';
+}
+function openHistory(pc, view) { histPc = pc.id; $(`.nav a[data-view="${view || 'log'}"]`).click(); }
+
+// ---- AI 명령
+let aiState = { targets: [], steps: [], results: [] };
+$('#aiBtn').onclick = () => {
+  const t = selected.size ? pcs.filter(p => selected.has(p.id)) : pcs.filter(p => p.state === 'online' && p.channel !== 'none');
+  if (!t.length) return toast('대상 PC가 없습니다 — 온라인 PC를 체크하세요');
+  aiState = { targets: t, steps: [], results: [] };
+  $('#aiTargets').innerHTML = t.map(p => `${esc(p.name)} <span style="color:var(--faint)">(${esc(p.os || '?')})</span>`).join(', ');
+  $('#aiPlanBox').classList.add('hide'); $('#aiResults').innerHTML = ''; $('#aiStatus').textContent = ''; $('#aiNext').disabled = true;
+  $('#aiModal').classList.add('show'); $('#aiPrompt').focus();
+};
+$('#aiClose').onclick = () => $('#aiModal').classList.remove('show');
+async function makePlan(prior) {
+  const prompt = $('#aiPrompt').value.trim(); if (!prompt) return toast('요청을 적어 주세요');
+  $('#aiStatus').textContent = 'AI가 계획을 만드는 중…'; $('#aiPlan').disabled = true;
+  try {
+    const r = await api('/api/ai/plan', { method: 'POST', body: JSON.stringify({ prompt, pc_ids: aiState.targets.map(p => p.id), prior }) });
+    aiState.steps = r.steps; $('#aiSummary').textContent = r.summary || ''; $('#aiQuestion').textContent = r.question || '';
+    $('#aiSteps').innerHTML = r.steps.length ? '<tr><th></th><th>PC</th><th>명령 (수정 가능)</th><th>이유</th><th>위험</th></tr>' + r.steps.map((s, i) => `<tr><td><input type="checkbox" class="aiChk" data-i="${i}" ${s.risk === 'high' ? '' : 'checked'} style="width:16px;height:16px;accent-color:var(--accent)"></td><td>${esc(s.pc_name)}</td><td><input class="aiCmd" data-i="${i}" value="${esc(s.cmd)}" style="font-family:Consolas,monospace;font-size:12px;padding:4px 8px"></td><td style="font-size:12px;color:var(--muted)">${esc(s.why || '')}</td><td style="color:${s.risk === 'high' ? 'var(--danger)' : 'var(--on)'}">${s.risk}</td></tr>`).join('') : '<tr><td style="color:var(--muted)">실행할 단계가 없습니다' + (r.summary ? ' — ' + esc(r.summary) : '') + '</td></tr>';
+    $('#aiPlanBox').classList.remove('hide'); $('#aiStatus').textContent = '';
+  } catch (err) { $('#aiStatus').textContent = err.message; }
+  $('#aiPlan').disabled = false;
+}
+$('#aiPlan').onclick = () => makePlan([]);
+$('#aiNext').onclick = () => makePlan(aiState.results);
+$('#aiRun').onclick = async () => {
+  const picks = $$('.aiChk').filter(c => c.checked).map(c => +c.dataset.i); if (!picks.length) return toast('실행할 단계를 체크하세요');
+  const steps = picks.map(i => ({ ...aiState.steps[i], cmd: $(`.aiCmd[data-i="${i}"]`).value }));
+  if (!confirm(`${steps.length}개 명령을 실행합니다:\n\n` + steps.map(s => `[${s.pc_name}] ${s.cmd}`).join('\n'))) return;
+  $('#aiRun').disabled = true;
+  for (const s of steps) {
+    const pc = pcs.find(p => p.id === s.pc_id) || { name: s.pc_name };
+    try {
+      const r = await api(`/api/pcs/${s.pc_id}/run`, { method: 'POST', body: JSON.stringify({ cmd: s.cmd, timeout: 90 }) });
+      $('#aiResults').insertAdjacentHTML('afterbegin', resBox(pc, r));
+      let res = r;
+      if (r.status === 'pending') {   // 에이전트 경로: 결과가 올 때까지 기다린다 (최대 60초)
+        for (let i = 0; i < 60; i++) { await new Promise(x => setTimeout(x, 1000)); const list = await api(`/api/commands?pc_id=${s.pc_id}`); const c = list.find(x => x.id === r.id); if (c && (c.status === 'done' || c.status === 'failed')) { res = c; await refreshCmd(r.id); break; } }
+      }
+      aiState.results.push({ pc_id: s.pc_id, cmd: s.cmd, exit_code: res.exit_code, output: res.output });
+    } catch (err) { $('#aiResults').insertAdjacentHTML('afterbegin', resBox(pc, { status: 'failed', output: err.message })); aiState.results.push({ pc_id: s.pc_id, cmd: s.cmd, exit_code: -1, output: err.message }); }
+  }
+  if ($('#aiShot').checked) {   // 실행이 끝난 뒤 각 PC 화면을 한 장씩 캡처해 결과에 붙인다
+    for (const pc of [...new Set(steps.map(s => s.pc_id))].map(id => pcs.find(p => p.id === id)).filter(p => p && p.channel === 'agent')) {
+      try { const r = await api(`/api/pcs/${pc.id}/screenshot`, { method: 'POST' }); $('#aiResults').insertAdjacentHTML('afterbegin', resBox(pc, { ...r, output: '실행 후 화면 캡처 — 에이전트가 올리면 표시' }));
+        for (let i = 0; i < 20; i++) { await new Promise(x => setTimeout(x, 1000)); const list = await api(`/api/commands?pc_id=${pc.id}`); const c = list.find(x => x.id === r.id); if (c && (c.status === 'done' || c.status === 'failed')) { await refreshCmd(r.id); break; } } }
+      catch (err) { toast(err.message); }
+    }
+  }
+  $('#aiRun').disabled = false; $('#aiNext').disabled = false;
+};
+$('#allowSignup').addEventListener('change', async e => { try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ allow_signup: e.target.checked }) }); toast(e.target.checked ? '회원가입을 켰습니다' : '회원가입을 껐습니다'); } catch (err) { toast(err.message); } });
+// ---- 내 API 키 (v1.4)
+const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n || 0);
+async function loadKeys() {
+  if (!can('operator')) return;
+  let d; try { d = await api('/api/keys'); } catch { return; }
+  $('#keyTotal').textContent = d.keys.length ? `키 ${d.keys.length}개 · 전체 요청 ${d.total.requests}회 · 입력 ${fmtN(d.total.input_tokens)} · 출력 ${fmtN(d.total.output_tokens)} 토큰` + (d.mock ? ' · 테스트 모드' : '') : '등록된 키가 없습니다 — AI 명령·AI 대화를 쓰려면 아래에서 추가하세요';
+  $('#keyList').innerHTML = d.keys.map(k => `
+    <div class="krow ${k.active ? 'on' : ''}" data-kid="${k.id}" data-name="${esc(k.name)}" data-model="${esc(k.model)}">
+      <div class="kn">${esc(k.name)}${k.active ? '<span class="tag">사용 중</span>' : ''}</div>
+      <div class="km"><code>${esc(k.hint)}</code> · 모델 <b>${esc(k.model)}</b><br>요청 ${k.requests}회 · 입력 ${fmtN(k.input_tokens)} · 출력 ${fmtN(k.output_tokens)} 토큰 · 마지막 사용 ${k.last_used ? new Date(k.last_used).toLocaleString('ko-KR') : '없음'}${k.errors ? ` · 오류 ${k.errors}회` : ''}</div>
+      <div class="kacts">${k.active ? '' : '<button class="sm" data-k="use">이 키 사용</button>'}<button class="sm" data-k="test">연결 확인</button><button class="sm" data-k="model">모델</button><button class="sm" data-k="rename">이름</button><button class="sm" data-k="rekey">키 교체</button><button class="sm" data-k="reset">사용량 초기화</button><button class="sm danger" data-k="del">삭제</button></div>
+      ${k.last_error ? `<div class="kerr">최근 오류: ${esc(k.last_error)}</div>` : ''}
+    </div>`).join('');
+}
+$('#keyList').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-k]'); if (!b) return;
+  const row = b.closest('.krow'), kid = row.dataset.kid, name = row.dataset.name, act = b.dataset.k, out = $('#keyTestResult');
+  const patch = body => api(`/api/keys/${kid}`, { method: 'PATCH', body: JSON.stringify(body) });
+  try {
+    if (act === 'use') { await patch({ active: true }); toast(`'${name}' 키를 씁니다`); }
+    if (act === 'model') { const m = prompt(`'${name}' 키의 모델 (비우면 기본값)`, row.dataset.model); if (m === null) return; await patch({ model: m }); toast('모델을 바꿨습니다'); }
+    if (act === 'rename') { const n = prompt('새 이름', name); if (!n) return; await patch({ name: n }); }
+    if (act === 'rekey') { const k = prompt(`'${name}'에 넣을 새 키 (sk-ant-…). 사용량 기록은 유지됩니다`); if (!k) return; await patch({ key: k }); toast('키를 교체했습니다'); }
+    if (act === 'reset') { if (!confirm(`'${name}'의 사용량 기록을 0으로 되돌릴까요?`)) return; await patch({ reset_usage: true }); }
+    if (act === 'del') { if (!confirm(`'${name}' 키를 삭제할까요? 서버에서 완전히 지워집니다.`)) return; await api(`/api/keys/${kid}`, { method: 'DELETE' }); toast('삭제했습니다'); }
+    if (act === 'test') {
+      b.disabled = true; out.style.color = 'var(--muted)'; out.textContent = `'${name}' 확인 중…`;
+      const r = await api(`/api/keys/${kid}/test`, { method: 'POST' }); b.disabled = false;
+      if (r.ok) { out.style.color = 'var(--on)'; out.textContent = `✔ '${name}' 연결됨 — 모델 ${r.model} · 응답 ${r.ms}ms · "${r.reply}"`; }
+      else { out.style.color = 'var(--danger)'; out.textContent = `✘ '${name}' ` + r.error; }
+      if (r.models && r.models.length && !r.ok) {
+        out.insertAdjacentHTML('beforeend', '<div style="margin-top:6px;color:var(--muted)">쓸 수 있는 모델(클릭하면 이 키의 모델로 저장): ' + r.models.map(m => `<code class="pickModel" style="cursor:pointer">${esc(m)}</code>`).join(' ') + '</div>');
+        $$('.pickModel').forEach(c => c.onclick = async () => { await patch({ model: c.textContent }); toast(`모델을 ${c.textContent}(으)로 저장했습니다`); loadKeys(); });
+      }
+    }
+  } catch (err) { b.disabled = false; toast(err.message); }
+  loadKeys();
+});
+$('#keyAdd').onsubmit = async e => {
+  e.preventDefault(); const f = e.target;
+  try { await api('/api/keys', { method: 'POST', body: JSON.stringify({ name: f.name.value, key: f.key.value, model: f.model.value }) }); f.reset(); toast('키를 추가했습니다'); loadKeys(); }
+  catch (err) { toast(err.message); }
+};
+
+
+// ---- 파일 탐색·가져오기 (그 PC → 이 PC)
+let fb = { pc: null, path: '', data: null };
+const fmtSize = n => n == null ? '' : n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : n < 1073741824 ? (n / 1048576).toFixed(1) + ' MB' : (n / 1073741824).toFixed(2) + ' GB';
+async function waitCmd(id, timeoutMs, onTick) {
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) {
+    const c = await api(`/api/commands/${id}`);
+    if (c.status === 'done' || c.status === 'failed') return c;
+    onTick && onTick(c); await new Promise(r => setTimeout(r, 400));
+  }
+  throw new Error('그 PC가 시간 안에 답하지 않았습니다 — 연결 상태를 확인하거나 다시 시도하세요');
+}
+function openFiles(pc, path) {
+  fb = { pc, path: path || '', data: null };
+  $('#fileTitle').textContent = `파일 — ${pc.name}`; $('#fileList').innerHTML = ''; $('#fileModal').classList.add('show');
+  loadDir(fb.path);
+}
+const cleanPath = v => (v || '').trim().replace(/^[`'"“”‘’\s]+|[`'"“”‘’\s]+$/g, '');   // 복사해 온 경로의 따옴표·백틱 제거
+async function loadDir(path) {
+  path = cleanPath(path);
+  $('#fileStatus').textContent = '불러오는 중…';
+  try {
+    const r = await api(`/api/pcs/${fb.pc.id}/files/list`, { method: 'POST', body: JSON.stringify({ path }) });
+    const c = await waitCmd(r.id, 30000);
+    let d; try { d = JSON.parse(c.output); } catch { throw new Error(c.output || '목록을 읽지 못했습니다'); }
+    if (d.error) { $('#fileStatus').textContent = `⚠ ${d.error}: ${d.path}`; return; }
+    fb.data = d; fb.path = d.path; $('#filePath').value = d.path;
+    $('#fileDrive').innerHTML = (d.drives || []).map(x => `<option ${d.path.toUpperCase().startsWith(x.toUpperCase()) ? 'selected' : ''}>${esc(x)}</option>`).join('');
+    const dirs = d.items.filter(x => x.dir).length;
+    $('#fileStatus').textContent = `폴더 ${dirs}개 · 파일 ${d.items.length - dirs}개` + (d.truncated ? ' (3000개까지만 표시)' : '');
+    if (d.select) $('#fileStatus').textContent += ` · '${d.select}' 파일이 있는 폴더를 열었습니다`;
+    $('#fileList').innerHTML = d.items.map((x, i) => `<div class="frow ${x.dir ? 'dir' : ''} ${x.name === d.select ? 'sel' : ''}" data-i="${i}">
+      <span>${x.dir ? '📁' : '📄'}</span><span class="fn" title="${esc(x.name)}">${esc(x.name)}</span>
+      <span class="fs">${x.dir ? '' : fmtSize(x.size)}</span><span class="ft">${x.mtime ? new Date(x.mtime * 1000).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+      <span class="fa" style="text-align:right"><button type="button" class="sm" data-get="${i}" title="${x.dir ? '폴더를 zip으로 묶어 내려받기' : '내려받기'}">${x.dir ? 'zip 받기' : '받기'}</button></span></div>`).join('') || '<div style="padding:20px;color:var(--muted);text-align:center">빈 폴더</div>';
+    const sel = d.select ? $('#fileList .frow.sel') : null; if (sel) sel.scrollIntoView({ block: 'center' });
+  } catch (err) { $('#fileStatus').textContent = '⚠ ' + err.message; }
+}
+const joinPath = (dir, name) => dir.endsWith(fb.data.sep) ? dir + name : dir + fb.data.sep + name;
+$('#fileList').addEventListener('click', e => {
+  const g = e.target.closest('[data-get]');
+  if (g) { const x = fb.data.items[+g.dataset.get]; return fetchRemote(joinPath(fb.path, x.name), x.name + (x.dir ? '.zip' : '')); }
+  const row = e.target.closest('.frow.dir'); if (row && e.target.closest('.fn')) loadDir(joinPath(fb.path, fb.data.items[+row.dataset.i].name));
+});
+$('#fileList').addEventListener('dblclick', e => { const row = e.target.closest('.frow.dir'); if (row) loadDir(joinPath(fb.path, fb.data.items[+row.dataset.i].name)); });
+async function fetchRemote(path, label) {
+  const job = document.createElement('div'); job.className = 'fjob'; job.innerHTML = `<b title="${esc(path)}">${esc(label)}</b><span>요청 중…</span>`;
+  $('#fileJobs').prepend(job); const st = job.querySelector('span');
+  try {
+    const r = await api(`/api/pcs/${fb.pc.id}/files/fetch`, { method: 'POST', body: JSON.stringify({ path }) });
+    st.textContent = '그 PC에서 보내는 중…';
+    const c = await waitCmd(r.id, 30 * 60 * 1000);
+    if (c.status !== 'done' || !c.file) { st.className = 'bad'; st.textContent = '실패: ' + (c.output || ''); return; }
+    st.className = 'ok'; st.innerHTML = `완료 ${fmtSize(c.file_size)} · <a href="/api/commands/${c.id}/file" download>다시 받기</a>`;
+    const a = document.createElement('a'); a.href = `/api/commands/${c.id}/file`; a.download = c.file; document.body.appendChild(a); a.click(); a.remove();
+  } catch (err) { st.className = 'bad'; st.textContent = err.message; }
+}
+$('#fileClose').onclick = () => $('#fileModal').classList.remove('show');
+$('#fileUp').onclick = () => fb.data?.parent && loadDir(fb.data.parent);
+$('#fileHome').onclick = () => loadDir(fb.data?.home || '~');
+$('#fileReload').onclick = () => loadDir(fb.path);
+$('#fileGo').onclick = () => loadDir($('#filePath').value.trim());
+$('#filePath').addEventListener('keydown', e => { if (e.key === 'Enter') loadDir(e.target.value.trim()); });
+$('#fileDrive').onchange = e => loadDir(e.target.value);
+
+// ---- AI 대화: 이 대화에서 다루는 PC의 연결 상태 바 (PC 목록이 바뀔 때마다 실시간 갱신)
+function renderChatPcBar() {
+  const bar = $('#chatPcBar'); if (!bar) return;
+  const d = chat.data;
+  const ids = new Set(d ? (d.pc_ids || []) : []);
+  (d?.pending || []).forEach(x => { const id = x?.input?.pc_id ?? x?.pc_id; if (id != null) ids.add(+id); });
+  const used = pcs.filter(p => ids.has(p.id)), list = used.length ? used : pcs;
+  if (!pcs.length) { bar.innerHTML = '<span class="lb">PC</span><span class="st">연결된 PC가 없습니다 — PC 목록에서 먼저 연결하세요</span>'; return; }
+  const on = list.filter(p => p.state === 'online' && p.remote_enabled && p.channel !== 'none').length;
+  bar.innerHTML = `<span class="lb">${used.length ? '이 대화의 PC' : '쓸 수 있는 PC'}</span>` + list.map(p => {
+    const off = !p.remote_enabled, ok = p.state === 'online' && !off && p.channel !== 'none';
+    const st = off ? '원격 꺼짐' : p.state === 'online' ? (p.channel === 'none' ? '경로 없음' : `연결됨 · ${CH_KO[p.channel]}`) : STATE_KO[p.state];
+    const tip = `${p.name} (${p.ip})\n${st}${p.source === 'agent' && p.state === 'online' ? `\nCPU ${Math.round(p.cpu || 0)}% · RAM ${Math.round(p.mem || 0)}%${p.gpu != null ? ` · GPU ${Math.round(p.gpu)}%` : ''}` : ''}${ok && p.channel === 'agent' ? '\n클릭: 화면 보기' : ''}`;
+    return `<span class="pc ${off ? 'roff' : p.state} ${ok && p.channel === 'agent' ? 'click' : ''}" data-pc="${p.id}" title="${esc(tip)}"><i class="dot"></i><b>${esc(p.name)}</b><span class="st">${st}</span></span>`;
+  }).join('') + `<span class="sum">${on} / ${list.length} 연결됨</span>`;
+}
+$('#chatPcBar').addEventListener('click', e => {
+  const c = e.target.closest('.pc.click'); if (!c) return;
+  const pc = pcs.find(p => p.id === +c.dataset.pc); if (pc) popScreen(pc);
+});
+
+// ---- AI 대화
+let chat = { sid: null, data: null, busy: false };
+async function loadChats(keep) {
+  fillPcFilters();
+  const list = await api('/api/chat/sessions' + (histPc ? `?pc_id=${histPc}` : ''));
+  $('#chatList').innerHTML = list.map(c => `<div class="ci ${c.id === chat.sid ? 'on' : ''}" data-id="${c.id}">${esc(c.title || '새 대화')}<small>${new Date(c.updated_at).toLocaleString('ko-KR')}</small>${c.pcs && c.pcs.length ? `<div class="cpcs">${c.pcs.map(p => `<span>${esc(p.name)}</span>`).join('')}</div>` : ''}</div>`).join('') || '<div style="color:var(--faint);font-size:12px;padding:8px">대화가 없습니다</div>';
+  if (!keep && !chat.sid && list.length) openChat(list[0].id);
+}
+$('#chatList').addEventListener('click', e => { const c = e.target.closest('.ci'); if (c) openChat(+c.dataset.id); });
+$('#chatNew').onclick = async () => { const r = await api('/api/chat/sessions', { method: 'POST', body: JSON.stringify({}) }); chat.sid = r.id; await loadChats(true); openChat(r.id); $('#chatText').focus(); };
+$('#chatRename').onclick = async () => { if (!chat.sid) return; const t = prompt('대화 이름', chat.data?.session.title || ''); if (t == null) return; await api(`/api/chat/sessions/${chat.sid}`, { method: 'PATCH', body: JSON.stringify({ title: t }) }); loadChats(true); $('#chatTitle').textContent = t; };
+$('#chatDel').onclick = async () => { if (!chat.sid || !confirm('이 대화를 삭제할까요? (실행된 명령 기록은 명령 기록 탭에 남습니다)')) return; await api(`/api/chat/sessions/${chat.sid}`, { method: 'DELETE' }); chat = { sid: null, data: null, busy: false }; renderChat(); loadChats(); };
+$('#chatMode').onclick = async e => { const b = e.target.closest('button'); if (!b || !chat.sid) return;
+  if (b.dataset.m === 'auto' && !confirm('자동 모드: 안전한 명령은 묻지 않고 바로 실행합니다.\n삭제·설치·종료·설정 변경·허용 안 된 폴더 접근은 계속 물어봅니다. 켤까요?')) return;
+  await api(`/api/chat/sessions/${chat.sid}`, { method: 'PATCH', body: JSON.stringify({ mode: b.dataset.m }) }); chat.data = await api(`/api/chat/sessions/${chat.sid}`); renderChat(); };
+$('#chatDirs').onclick = async e => {
+  if (!chat.sid) return; const dirs = [...(chat.data.session.allowed_dirs || [])];
+  if (e.target.id === 'addDir') { const v = prompt('허용할 폴더 경로 (예: C:\\work, ~/Documents)'); if (!v) return; dirs.push(v.trim()); }
+  else if (e.target.dataset.rmdir != null) dirs.splice(+e.target.dataset.rmdir, 1); else return;
+  await api(`/api/chat/sessions/${chat.sid}`, { method: 'PATCH', body: JSON.stringify({ allowed_dirs: dirs }) }); chat.data = await api(`/api/chat/sessions/${chat.sid}`); renderChat(); };
+$('#chatAuto').onchange = async e => { if (chat.sid) await api(`/api/chat/sessions/${chat.sid}`, { method: 'PATCH', body: JSON.stringify({ auto_shot: e.target.checked }) }); };
+async function openChat(sid) { chat.sid = sid; chat.data = await api(`/api/chat/sessions/${sid}`); renderChat(); loadChats(true); }
+function pcName(id) { return pcs.find(p => p.id === id)?.name || `PC ${id}`; }
+function renderChat() {
+  renderChatPcBar();
+  const box = $('#chatMsgs'), d = chat.data;
+  if (!d) { $('#chatTitle').textContent = '대화를 선택하거나 새로 만드세요'; return; }
+  $('#chatTitle').textContent = d.session.title || '새 대화'; $('#chatAuto').checked = !!d.session.auto_shot;
+  const mode = d.session.mode || 'manual'; $$('#chatMode button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+  $('#chatAutoWrap').style.display = mode === 'auto' ? 'none' : '';
+  $('#chatDirs').innerHTML = '허용 폴더: ' + (d.session.allowed_dirs || []).map((x, i) => `<span class="dir">${esc(x)}<b data-rmdir="${i}" title="허용 해제">×</b></span>`).join('') + ' <button class="ghost sm" id="addDir" type="button">+ 폴더</button>' + (mode === 'auto' ? ' <span style="margin-left:auto">자동: 안전한 작업은 바로 실행 · 삭제/설치/종료/설정/허용 밖 폴더는 확인</span>' : ' <span style="margin-left:auto">수동: 모든 명령을 확인</span>');
+  const results = {}; d.messages.forEach(m => m.content.forEach(b => { if (b.type === 'tool_result') results[b.tool_use_id] = b; }));
+  const pend = Object.fromEntries((d.pending || []).map(p => [p.id, p]));
+  let html = '';
+  for (const m of d.messages) for (const b of m.content) {
+    if (b.type === 'text' && b.text.trim()) html += `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${esc(b.text)}</div>`;
+    if (b.type === 'tool_use') {
+      const r = results[b.id], p = pend[b.id], inp = b.input || {};
+      if (b.name === 'list_pcs') { html += `<div class="tcard"><div class="th"><b>PC 목록 확인</b><span class="tag ok">자동</span></div></div>`; continue; }
+      if (b.name === 'request_folder_access') {
+        html += `<div class="tcard"><div class="th"><b>폴더 접근 요청</b>${r ? (r.is_error ? '<span class="tag bad">거절</span>' : '<span class="tag ok">허가</span>') : '<span class="tag wait">승인 필요</span>'}</div><pre style="color:#c9c9ff">${esc(inp.path)}</pre><div style="font-size:12px;color:var(--muted)">${esc(inp.reason || '')}</div>`;
+        if (p && !p.decision) html += `<div class="acts"><button class="ghost sm" data-rej="${b.id}">거절</button><button class="primary sm" data-ok="${b.id}">이 폴더 허용</button></div>`;
+        html += '</div>'; continue;
+      }
+      const title = b.name === 'run_command' ? `명령 — ${esc(pcName(inp.pc_id))}` : `화면 캡처 — ${esc(pcName(inp.pc_id))}`;
+      const status = r ? (r.is_error ? '<span class="tag bad">실패/거절</span>' : '<span class="tag ok">완료</span>') : p ? (p.decision ? '<span class="tag wait">실행 대기</span>' : '<span class="tag wait">승인 필요</span>') : '<span class="tag">-</span>';
+      html += `<div class="tcard ${inp.risk === 'high' ? 'high' : ''}"><div class="th"><b>${title}</b>${inp.risk === 'high' ? '<span class="tag bad">⚠ 위험</span>' : ''}${status}<span>${esc(inp.reason || '')}</span></div>`;
+      if (p && !p.decision && p.why) html += `<div class="why">승인이 필요한 이유: ${esc(p.why)}</div>`;
+      if (b.name === 'run_command') html += (p && !p.decision) ? `<textarea data-tu="${b.id}">${esc(inp.command)}</textarea>` : `<pre style="color:#8a8aa3">$ ${esc(inp.command)}</pre>`;
+      if (p && !p.decision) html += `<div class="acts"><button class="ghost sm" data-rej="${b.id}">거절</button>${(p.outside || []).filter(x => !x.startsWith('..')).length ? `<button class="ghost sm" data-okdir="${b.id}" title="${esc(p.outside.join(', '))}">폴더 허용 후 실행</button>` : ''}<button class="primary sm" data-ok="${b.id}">${b.name === 'run_command' ? '이번만 실행' : '캡처 승인'}</button></div>`;
+      if (r) { const txt = (r.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n').replace(/^\(실행한 명령: [^\n]*\)\n/, ''); if (txt) html += `<pre>${esc(txt)}</pre>`; if (r._shot) html += `<a href="/api/commands/${r._shot}/shot" target="_blank"><img src="/api/commands/${r._shot}/shot"></a>`; }
+      html += '</div>';
+    }
+  }
+  if (chat.busy) html += '<div class="thinking">생각하고 실행하는 중…</div>';
+  box.innerHTML = html || '<div class="cempty">무엇을 할까요?</div>';
+  box.scrollTop = box.scrollHeight; updateBottomBtn();
+}
+async function chatPost(url, body) {
+  chat.busy = true; renderChat(); $('#chatSend').disabled = true;
+  try { chat.data = await api(url, { method: 'POST', body: JSON.stringify(body) }); } catch (err) { toast(err.message); }
+  chat.busy = false; $('#chatSend').disabled = false; renderChat(); loadChats(true);
+}
+$('#chatForm').onsubmit = async e => {
+  e.preventDefault(); const t = $('#chatText').value.trim(); if (!t || chat.busy) return;
+  if (!chat.sid) { const r = await api('/api/chat/sessions', { method: 'POST', body: JSON.stringify({}) }); chat.sid = r.id; chat.data = await api(`/api/chat/sessions/${r.id}`); }
+  $('#chatText').value = ''; chat.data.messages.push({ role: 'user', content: [{ type: 'text', text: t }] }); chat.data.pending = [];
+  await chatPost(`/api/chat/sessions/${chat.sid}/send`, { text: t });
+};
+$('#chatText').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#chatForm').requestSubmit(); } });
+function updateBottomBtn() { const b = $('#chatMsgs'); $('#chatBottom').classList.toggle('show', b.scrollHeight - b.scrollTop - b.clientHeight > 120); }
+$('#chatMsgs').addEventListener('scroll', updateBottomBtn);
+$('#chatBottom').onclick = () => { const b = $('#chatMsgs'); b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); };
+$('#chatMsgs').addEventListener('click', async e => {
+  const okdir = e.target.closest('[data-okdir]'), ok = e.target.closest('[data-ok]') || okdir, rej = e.target.closest('[data-rej]'); if (!ok && !rej || chat.busy) return;
+  const id = ok ? (ok.dataset.ok || ok.dataset.okdir) : rej.dataset.rej; const ta = document.querySelector(`textarea[data-tu="${id}"]`);
+  let allow_dirs;
+  if (okdir) {
+    const p = (chat.data.pending || []).find(x => x.id === id);
+    const dirs = (p?.outside || []).filter(x => !x.startsWith('..')).map(x => /\.[A-Za-z0-9]{1,5}$/.test(x) ? x.replace(/[\\/][^\\/]+$/, '') : x);
+    const v = prompt('허용할 폴더 (쉼표로 여러 개). 이 대화에서 이 폴더와 하위 폴더는 자동 모드에서 묻지 않습니다:', [...new Set(dirs)].join(', '));
+    if (v == null) return; allow_dirs = v.split(',').map(x => x.trim()).filter(Boolean);
+  }
+  $$('#chatMsgs [data-ok], #chatMsgs [data-rej], #chatMsgs [data-okdir]').forEach(x => x.disabled = true);
+  await chatPost(`/api/chat/sessions/${chat.sid}/decide`, { tool_use_id: id, approve: !!ok, command: ta ? ta.value : undefined, allow_dirs });
+});
+
+// ---- 계정 관리 (admin)
+let acctRole = '', acctTimer = null;
+const ROLE_KO = { admin: 'admin (전부)', operator: 'operator (자기 PC 관리)', viewer: 'viewer (보기만)' };
+async function loadAccounts() {
+  if (!can('admin')) return;
+  try { const st = await api('/api/settings'); $('#allowSignup').checked = !!st.allow_signup; } catch {}
+  const list = await api(`/api/users?q=${encodeURIComponent($('#acctQ').value.trim())}&role=${acctRole}`);
+  $('#acctTbl').innerHTML = '<tr><th>아이디</th><th>권한</th><th>PC</th><th>대화</th><th>API 키</th><th>마지막 로그인</th><th>가입</th><th></th></tr>' + list.map(x => `
+    <tr class="${x.disabled ? 'off' : ''}" data-id="${x.id}" data-name="${esc(x.username)}">
+      <td><b>${esc(x.username)}</b>${x.username === me.user ? '<span class="me">나</span>' : ''}${x.disabled ? ' <span class="tag bad">비활성</span>' : ''}</td>
+      <td><select data-role ${x.username === me.user ? 'title="자기 권한은 다른 admin이 바꿉니다"' : ''}>${Object.keys(ROLE_KO).map(r => `<option value="${r}" ${r === x.role ? 'selected' : ''}>${ROLE_KO[r]}</option>`).join('')}</select></td>
+      <td>${x.pc_count}</td><td>${x.chat_count}</td><td>${x.key_count ? x.key_count + '개' : '-'}</td>
+      <td>${x.last_login ? new Date(x.last_login).toLocaleString('ko-KR') : '<span style="color:var(--faint)">없음</span>'}</td>
+      <td>${new Date(x.created_at).toLocaleDateString('ko-KR')}</td>
+      <td><div class="acts"><button class="sm" data-pw>비밀번호 초기화</button>${x.username === me.user ? '' : `<button class="sm" data-dis>${x.disabled ? '활성화' : '비활성화'}</button><button class="sm danger" data-del>삭제</button>`}</div></td>
+    </tr>`).join('') + (list.length ? '' : '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">검색 결과가 없습니다</td></tr>');
+}
+$('#acctQ').addEventListener('input', () => { clearTimeout(acctTimer); acctTimer = setTimeout(loadAccounts, 200); });
+$('#acctRole').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; acctRole = c.dataset.r; $$('#acctRole .chip').forEach(x => x.classList.toggle('active', x === c)); loadAccounts(); });
+$('#acctTbl').addEventListener('change', async e => {
+  const sel = e.target.closest('[data-role]'); if (!sel) return; const tr = sel.closest('tr');
+  if (!confirm(`${tr.dataset.name}의 권한을 ${ROLE_KO[sel.value]}(으)로 바꿀까요?`)) return loadAccounts();
+  try { await api(`/api/users/${tr.dataset.id}`, { method: 'PATCH', body: JSON.stringify({ role: sel.value }) }); toast('권한을 바꿨습니다'); } catch (err) { toast(err.message); }
+  loadAccounts();
+});
+$('#acctTbl').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return; const tr = b.closest('tr'), id = tr.dataset.id, name = tr.dataset.name;
+  try {
+    if (b.hasAttribute('data-pw')) { const pw = prompt(`${name}의 새 비밀번호 (6자 이상). 잠금도 함께 풀립니다:`); if (!pw) return; await api(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify({ password: pw }) }); toast('비밀번호를 바꿨습니다'); }
+    if (b.hasAttribute('data-dis')) { const off = !tr.classList.contains('off'); if (off && !confirm(`${name} 계정을 비활성화할까요? 즉시 로그아웃되고 로그인할 수 없습니다 (데이터는 유지).`)) return; await api(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify({ disabled: off }) }); toast(off ? '비활성화했습니다' : '활성화했습니다'); }
+    if (b.hasAttribute('data-del')) { if (!confirm(`${name} 계정을 삭제할까요?\n그 계정의 PC 등록·그룹·AI 대화도 함께 지워집니다 (PC 자체에는 영향 없음). 되돌릴 수 없습니다.`)) return; await api(`/api/users/${id}`, { method: 'DELETE' }); toast('삭제했습니다'); }
+  } catch (err) { toast(err.message); }
+  loadAccounts();
+});
+$('#acctAdd').onclick = async () => {
+  const name = prompt('새 아이디 (영문·숫자·_ . - 3~20자, 대소문자 구분)'); if (!name) return;
+  const pw = prompt('비밀번호 (6자 이상)'); if (!pw) return;
+  const role = (prompt('권한: admin / operator / viewer', 'operator') || '').trim(); if (!role) return;
+  try { await api('/api/users', { method: 'POST', body: JSON.stringify({ username: name.trim(), password: pw, role }) }); toast('계정을 추가했습니다'); loadAccounts(); } catch (err) { toast(err.message); }
+};
+
+// ---- 설정
+async function renderSettings() {
+  loadKeys();
+  if (!can('admin')) return;
+  try { const st0 = await api('/api/settings'); if ($('#allowSignup')) $('#allowSignup').checked = !!st0.allow_signup; } catch {}
+  const users = await api('/api/users');
+  if ($('#userTbl')) $('#userTbl').innerHTML = '<tr><th>아이디</th><th>권한</th><th>생성</th><th></th></tr>' + users.map(u => `<tr><td>${esc(u.username)}</td><td>${u.role}</td><td>${new Date(u.created_at).toLocaleDateString('ko-KR')}</td><td style="text-align:right">${u.username === me.user ? '' : `<button class="sm danger" data-del="${u.id}">삭제</button>`}</td></tr>`).join('');
+}
+$('#view-settings').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  try {
+    if (b.dataset.del && confirm('이 사용자를 삭제할까요?')) { await api(`/api/users/${b.dataset.del}`, { method: 'DELETE' }); renderSettings(); }
+    if (b.id === 'copyEnroll') { await navigator.clipboard.writeText($('#enrollToken').textContent); toast('복사했습니다'); }
+  } catch (err) { toast(err.message); }
+});
+if ($('#userForm')) $('#userForm').onsubmit = async e => { e.preventDefault(); const f = e.target; try { await api('/api/users', { method: 'POST', body: JSON.stringify({ username: f.username.value, password: f.password.value, role: f.role.value }) }); f.reset(); toast('사용자를 추가했습니다'); renderSettings(); } catch (err) { toast(err.message); } };
+$('#pwForm').onsubmit = async e => { e.preventDefault(); const f = e.target; try { await api('/api/password', { method: 'POST', body: JSON.stringify({ old_password: f.old.value, new_password: f.new.value }) }); f.reset(); toast('비밀번호를 바꿨습니다'); } catch (err) { toast(err.message); } };
+
+// ---- 네비게이션
+const titles = { pcs: ['PC 목록', '같은 대역 PC의 실시간 상태'], accounts: ['계정 관리', '계정 검색 · 권한 부여 · 비밀번호 초기화 · 비활성화 (admin 전용)'], chat: ['AI 대화', '대화로 PC에 일을 시키고, 승인한 명령만 실행 · 화면 캡처로 결과 확인'], cmds: ['명령 기록', '요청자·대상·종료 코드·출력 (최근 100건)'], log: ['활동 로그', '로그인·추가·전원·토큰 기록 (최근 200건)'], help: ['사용법', 'IP·MAC 확인, 연결 방식, 에이전트·SSH, 명령·파일'], settings: ['설정', '사용자·권한·에이전트 토큰'] };
+$$('.nav a').forEach(a => a.onclick = async e => {
+  e.preventDefault(); const v = a.dataset.view; $$('.nav a').forEach(x => x.classList.toggle('active', x === a));
+  $('#pageTitle').textContent = titles[v][0]; $('#pageSub').textContent = titles[v][1];
+  $('#countBadge').style.display = v === 'pcs' ? '' : 'none'; $('#batchBtn').style.display = v === 'pcs' ? '' : 'none'; $('#addBtn').style.display = v === 'pcs' ? '' : 'none';
+  Object.keys(titles).forEach(k => $(`#view-${k}`).style.display = k === v ? '' : 'none');
+  if (v === 'log') renderLog();
+  if (v === 'cmds') renderCmds();
+  if (v === 'chat') { renderChatPcBar(); loadChats(); }
+  if (v === 'accounts') loadAccounts();
+  if (v === 'settings') renderSettings();
+});
+$('#logoutBtn').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload(); };
+
+// ---- 로그인·부팅
+function showLogin() { $('#app').style.display = 'none'; $('#loginModal').classList.add('show'); }
+let signupMode = false;
+fetch('/api/signup-enabled').then(r => r.json()).then(d => { if (!d.enabled) $('#toSignup').style.display = 'none'; }).catch(() => {});
+$('#toSignup').onclick = e => {
+  e.preventDefault(); signupMode = !signupMode; $('#loginErr').textContent = '';
+  $('#loginTitle').textContent = signupMode ? '회원가입' : '로그인'; $('#loginSubmit').textContent = signupMode ? '가입하기' : '로그인';
+  $('#toSignup').textContent = signupMode ? '로그인으로' : '회원가입'; $('#pw2Wrap').classList.toggle('hide', !signupMode); $('#signupNote').hidden = !signupMode;
+  $('#loginForm').password.autocomplete = signupMode ? 'new-password' : 'current-password';
+};
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault(); const f = e.target; $('#loginErr').textContent = '';
+  if (signupMode && f.password.value !== f.password2.value) { $('#loginErr').textContent = '비밀번호 확인이 다릅니다'; return; }
+  try { await api(signupMode ? '/api/register' : '/api/login', { method: 'POST', body: JSON.stringify({ username: f.username.value.trim(), password: f.password.value }) });
+    if (signupMode) toast('가입했습니다 — 이제 ⚡ PC 연결로 내 PC를 추가하세요'); $('#loginModal').classList.remove('show'); boot(); }
+  catch (err) { $('#loginErr').textContent = err.message; }
+};
+function connectWs() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  ws.onopen = () => { $('#conn').classList.add('ok'); $('#connText').textContent = '서버 연결됨'; };
+  ws.onmessage = m => { const d = JSON.parse(m.data); if (d.type === 'pcs') { pcs = d.pcs; render(); const sig = pcs.map(p => p.id + ':' + p.group_id).join(','); if (sig !== window._gsig) { window._gsig = sig; loadGroups(); } if ($('#view-chat').style.display !== 'none') renderChatPcBar(); } if (d.type === 'groups') loadGroups(); if (d.type === 'command') refreshCmd(d.id); };
+  ws.onclose = () => { $('#conn').classList.remove('ok'); $('#connText').textContent = '연결 끊김'; setTimeout(connectWs, 3000); };
+  setInterval(() => ws.readyState === 1 && ws.send('ping'), 20000);
+}
+async function boot() {
+  try { me = await api('/api/me'); } catch { return; }
+  $('#whoami').textContent = `${me.user} · ${me.role}`; $('#userName').textContent = me.user; $('#userRole').textContent = me.role; $('#serverName').textContent = `${me.server} (${me.server_ip})`;
+  $$('.srvip').forEach(e => e.textContent = me.server_ip); $$('.srvhost').forEach(e => e.textContent = me.server);
+  $$('.srvnet').forEach(e => e.textContent = me.server_ip.split('.').slice(0, 3).join('.'));
+  if (me.enroll_token) { $('#enrollToken').textContent = me.enroll_token; $$('.srvtoken').forEach(e => e.textContent = me.enroll_token); }
+  $$('.adm').forEach(e => e.classList.toggle('hide', !can('admin')));
+  $$('.op').forEach(e => e.classList.toggle('hide', !can('operator')));
+  if (SOLO) return bootSolo();
+  $('#app').style.display = ''; pcs = await api('/api/pcs'); await loadGroups(); render(); connectWs();
+  setInterval(render, 10000);
+}
+// ---- 화면 전용 창 (/?screen=PC번호): Manager와 따로 띄워 동시에 쓰기
+async function bootSolo() {
+  document.body.classList.add('solo');
+  pcs = await api('/api/pcs');
+  const pc = pcs.find(p => p.id === +SOLO);
+  if (!pc) { document.body.innerHTML = '<p style="padding:40px;color:#aaa">이 계정에 그 PC가 없습니다. 창을 닫아 주세요.</p>'; return; }
+  document.title = `화면 — ${pc.name}`;
+  $('#screenPop').style.display = 'none';
+  openScreen(pc);
+}
+function popScreen(pc) {
+  const w = window.open(`/?screen=${pc.id}`, `pcm-screen-${pc.id}`, 'popup=yes,width=1320,height=860');
+  if (!w) { toast('브라우저가 새 창을 막았습니다 — 주소창의 팝업 허용을 켜 주세요. 지금은 이 창 안에서 엽니다'); openScreen(pc); return; }
+  w.focus();
+}
+boot();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+
+// ---- 화면 보기·조종 (v1.3)
+let scr = { pc: null, on: false, w: 0, h: 0, q: [], frames: 0, t0: 0, ctl: false };
+function openScreen(pc) {
+  scr = { pc, on: true, w: 0, h: 0, q: [], frames: 0, t0: Date.now(), ctl: false, clipSeq: null, clipText: '', seq: -1 };
+  $('#clipBar').style.display = 'none';
+  $('#screenTitle').textContent = `화면 — ${pc.name}`; $('#screenInfo').textContent = '연결 중…';
+  $('#screenCtl').checked = false; $('#screenCtl').disabled = true; $('#screenWrap').classList.remove('ctl');
+  const img = $('#screenImg'); if (img.src) URL.revokeObjectURL(img.src); img.removeAttribute('src');
+  $('#screenWait').textContent = '에이전트가 화면 전송을 시작하길 기다리는 중 (최대 5초)…'; $('#screenWait').style.display = '';
+  $('#screenModal').classList.add('show');
+  pullFrame();
+}
+function frameHeaders(r) {   // 그림이 오든 '그대로'든 같이 오는 상태 정보 처리
+  scr.ctl = r.headers.get('X-Control') === '1';
+  $('#screenCtl').disabled = !scr.ctl;
+  const cs = r.headers.get('X-Clip-Seq') || '0';
+  if (scr.clipSeq == null) scr.clipSeq = cs;               // 열기 전에 복사돼 있던 건 가져오지 않는다
+  else if (cs !== scr.clipSeq) { scr.clipSeq = cs; if (cs !== '0' && $('#screenCtl').checked) pullClip(); }
+  const ie = decodeURIComponent(r.headers.get('X-Input-Err') || '');
+  const fps = scr.frames / Math.max(1, (Date.now() - scr.t0) / 1000);
+  $('#screenInfo').textContent = `${scr.w}×${scr.h} · ${fps.toFixed(1)} fps` + (scr.ctl ? '' : ' · 보기 전용 (조종 모듈 준비 안 됨)');
+  if (ie && $('#screenCtl').checked) { $('#screenInfo').textContent += ' · ⚠ ' + ie; $('#screenInfo').style.color = 'var(--warn)'; } else $('#screenInfo').style.color = '';
+  $('#screenElev').style.display = ie.includes('관리자 권한') && $('#screenCtl').checked ? '' : 'none';
+}
+async function pullFrame() {
+  if (!scr.on) return;
+  const pid = scr.pc.id;
+  try {
+    const r = await fetch(`/api/pcs/${pid}/frame?after=${scr.seq ?? -1}`);   // 새 그림이 생길 때까지 서버가 잠깐 기다렸다 준다
+    if (!scr.on || scr.pc.id !== pid) return;
+    if (r.status === 200) {
+      scr.w = +r.headers.get('X-Screen-W'); scr.h = +r.headers.get('X-Screen-H'); scr.seq = +(r.headers.get('X-Frame-Seq') || -1);
+      const url = URL.createObjectURL(await r.blob()); const img = $('#screenImg'); const old = img.src; img.src = url; if (old) URL.revokeObjectURL(old);
+      $('#screenWait').style.display = 'none'; scr.frames++;
+      frameHeaders(r);
+      setTimeout(pullFrame, 10);
+    } else if (r.status === 204 && r.headers.get('X-Screen-State') === 'same') {   // 화면이 그대로 — 바로 다시 기다린다
+      frameHeaders(r); setTimeout(pullFrame, 10);
+    } else if (r.status === 204) {
+      scr.seq = -1;
+      const why = r.headers.get('X-Screen-State'), err = decodeURIComponent(r.headers.get('X-Screen-Err') || ''), w = $('#screenWait');
+      if (why === 'old') { if (!w.querySelector('#agentUpd')) w.innerHTML = `<div>이 PC의 연결 프로그램이 <b>예전 버전</b>이라 화면 보기를 모릅니다.<br><br><button class="primary" id="agentUpd">원격으로 업데이트</button><div style="margin-top:8px;font-size:12px">파일을 바꾸고 연결 프로그램을 다시 시작합니다(10초 정도). 이번 한 번만 하면 다음부터는 자동으로 업데이트됩니다.</div></div>`; }
+      else if (why === 'off') w.textContent = '이 PC는 화면 보기를 거부하도록(--no-screen) 실행돼 있습니다.';
+      else if (why === 'err') w.textContent = '그 PC에서 화면을 가져오지 못했습니다: ' + err;
+      else if (Date.now() - scr.t0 > 12000 && !scr.frames) w.textContent = '화면을 기다리는 중… (처음에는 그 PC가 캡처를 준비하느라 10초 정도 걸릴 수 있습니다)';
+      setTimeout(pullFrame, 400);
+    } else {
+      let msg = `오류 ${r.status}`; try { msg = (await r.json()).detail || msg; } catch {}
+      $('#screenWait').textContent = msg; $('#screenWait').style.display = '';
+      if ([401, 403, 404].includes(r.status)) { scr.on = false; return; }   // 권한·원격 꺼짐은 멈춤
+      setTimeout(pullFrame, 1500);   // 400(잠깐 연결 끊김 — 에이전트 재시작 등)은 계속 다시 시도
+    }
+  } catch { setTimeout(pullFrame, 1500); }
+}
+function closeScreen() {
+  if (!scr.pc) return;
+  if (scr.on && window.releaseRemote) { window.releaseRemote(); const evs = scr.q.splice(0); fetch(`/api/pcs/${scr.pc.id}/input`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: evs }) }).catch(() => {}); }
+  const was = scr.on; scr.on = false; $('#screenModal').classList.remove('show');
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (was) fetch(`/api/pcs/${scr.pc.id}/screen/stop`, { method: 'POST' }).catch(() => {});
+}
+
+async function pullClip() {
+  let c; try { c = await api(`/api/pcs/${scr.pc.id}/clip`); } catch { return; }
+  if (!c.text) return;
+  scr.clipText = c.text;
+  if (navigator.clipboard && window.isSecureContext) {   // localhost·https면 바로 내 클립보드에 넣는다
+    try { await navigator.clipboard.writeText(c.text); scr.clipPending = ''; toast(`상대 PC에서 복사한 글을 내 클립보드에 넣었습니다 (${c.text.length}자)`); $('#clipBar').style.display = 'none'; return; }
+    catch { scr.clipPending = c.text; }   // 다른 창에 가 있으면 브라우저가 막는다 → 이 창으로 돌아오면 다시 넣는다
+  }
+  $('#clipPrev').textContent = c.text.replace(/\s+/g, ' ').slice(0, 120); $('#clipBar').style.display = '';   // http 주소면 버튼으로
+}
+window.addEventListener('focus', async () => {
+  if (!scr.on || !scr.clipPending || !navigator.clipboard) return;
+  try { await navigator.clipboard.writeText(scr.clipPending); toast(`상대 PC에서 복사한 글을 내 클립보드에 넣었습니다 (${scr.clipPending.length}자)`); scr.clipPending = ''; $('#clipBar').style.display = 'none'; } catch {}
+});
+$('#clipCopy').onclick = () => { const ta = document.createElement('textarea'); ta.value = scr.clipText; ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch {} ta.remove();
+  toast(ok ? '내 PC 클립보드에 복사했습니다' : '복사하지 못했습니다'); if (ok) $('#clipBar').style.display = 'none'; $('#screenKbd').focus(); };
+$('#clipHide').onclick = () => { $('#clipBar').style.display = 'none'; $('#screenKbd').focus(); };
+$('#screenClose').onclick = () => { closeScreen(); if (SOLO) window.close(); };
+$('#screenFiles').onclick = () => scr.pc && openFiles(scr.pc);
+$('#screenPop').onclick = () => { const pc = scr.pc; closeScreen(); if (pc) popScreen(pc); };
+window.addEventListener('pagehide', () => {   // 창을 닫거나 새로고침하면 화면 전송을 바로 멈춘다
+  if (!scr.on || !scr.pc) return;
+  const id = scr.pc.id;
+  navigator.sendBeacon(`/api/pcs/${id}/screen/stop`);   // 그 PC는 보기가 끝날 때 눌린 키·버튼을 스스로 모두 뗀다
+});
+$('#screenElev').onclick = async () => {
+  if (!confirm('연결 프로그램을 관리자 권한으로 전환합니다.\n그 PC 화면에 UAC 확인 창이 뜨고, 그 PC 앞에서 직접 \'예\'를 눌러야 합니다 (원격으로는 누를 수 없음).\n한 번 하면 다음부터는 PC를 켤 때 관리자 권한으로 실행됩니다. 진행할까요?')) return;
+  try { await api(`/api/pcs/${scr.pc.id}/elevate`, { method: 'POST' }); toast('UAC 요청을 보냈습니다 — 그 PC 앞에서 \'예\'를 눌러 주세요'); } catch (err) { toast(err.message); }
+};
+$('#screenWait').addEventListener('click', async e => {
+  if (e.target.id !== 'agentUpd' || !scr.pc) return;
+  e.target.disabled = true; e.target.textContent = '업데이트 명령을 보냈습니다…';
+  try { await api(`/api/pcs/${scr.pc.id}/agent-update`, { method: 'POST' }); toast('업데이트 명령을 보냈습니다 — 잠시 뒤 화면이 뜹니다'); scr.t0 = Date.now(); }
+  catch (err) { toast(err.message); e.target.disabled = false; e.target.textContent = '원격으로 업데이트'; }
+});
+$('#screenFull').onclick = () => $('#screenWrap').requestFullscreen?.().catch(() => {});
+$('#screenCtl').onchange = e => { $('#screenWrap').classList.toggle('ctl', e.target.checked); if (e.target.checked) $('#screenKbd').focus(); else window.releaseRemote && window.releaseRemote(); };
+const ctlOn = () => scr.on && scr.ctl && $('#screenCtl').checked;
+function toScreen(e) {
+  const rc = $('#screenImg').getBoundingClientRect();
+  return { x: Math.max(0, Math.min(scr.w - 1, Math.round((e.clientX - rc.left) / rc.width * scr.w))), y: Math.max(0, Math.min(scr.h - 1, Math.round((e.clientY - rc.top) / rc.height * scr.h))) };
+}
+function queue(ev) { if (ctlOn()) scr.q.push(ev); }
+setInterval(async () => {
+  if (!scr.on || !scr.q.length) return;
+  const evs = scr.q.splice(0);
+  try { await api(`/api/pcs/${scr.pc.id}/input`, { method: 'POST', body: JSON.stringify({ events: evs }) }); }
+  catch (err) { toast(err.message); }   // 잠깐의 오류(재시작 등)로 조종을 꺼 버리지 않는다
+}, 70);
+{
+  const img = $('#screenImg'), kbd = $('#screenKbd'); let lastMove = 0;
+  img.addEventListener('mousemove', e => { if (Date.now() - lastMove < 35) return; lastMove = Date.now(); queue({ type: 'move', ...toScreen(e) }); });
+  const pressed = new Map();   // 눌린 버튼 → 마지막 좌표. 화면 밖에서 떼도 '뗌'을 보내 상대 PC에서 눌린 채 남지 않게
+  img.addEventListener('mousedown', e => { if (!ctlOn()) return; e.preventDefault(); kbd.focus(); const at = toScreen(e); pressed.set(e.button, at); queue({ type: 'down', button: e.button, ...at }); });
+  window.addEventListener('mouseup', e => {
+    if (!pressed.has(e.button)) return;
+    const at = e.target === img ? toScreen(e) : pressed.get(e.button);
+    pressed.delete(e.button);
+    if (scr.on) scr.q.push({ type: 'up', button: e.button, ...at });
+    if (e.target === img) e.preventDefault();
+  });
+  window.releaseRemote = () => { pressed.clear(); if (scr.on && scr.pc) scr.q.push({ type: 'release' }); };
+  window.addEventListener('blur', () => { if (ctlOn()) window.releaseRemote(); });
+  img.addEventListener('contextmenu', e => { if (ctlOn()) e.preventDefault(); });
+  img.addEventListener('wheel', e => { if (!ctlOn()) return; e.preventDefault(); queue({ type: 'scroll', dy: e.deltaY, ...toScreen(e) }); }, { passive: false });
+  const composing = e => e.isComposing || e.key === 'Process' || e.keyCode === 229;
+  let pasting = false;
+  const isPaste = e => (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'v';
+  kbd.addEventListener('keydown', e => {
+    if (!ctlOn() || composing(e)) return;
+    if (isPaste(e)) { pasting = true; return; }   // 막지 않아야 브라우저가 paste 이벤트로 내 클립보드 글을 준다
+    e.preventDefault(); queue({ type: 'keydown', key: e.key });
+  });
+  kbd.addEventListener('keyup', e => {
+    if (!ctlOn() || composing(e)) return;
+    if (e.key.toLowerCase() === 'v' && pasting) { pasting = false; e.preventDefault(); return; }
+    e.preventDefault(); queue({ type: 'keyup', key: e.key });
+  });
+  kbd.addEventListener('paste', e => {   // 내 클립보드 글을 상대 PC 클립보드에 넣은 뒤 Ctrl+V를 보낸다
+    if (!ctlOn()) return;
+    e.preventDefault();
+    const t = e.clipboardData?.getData('text/plain') || '';
+    if (t) queue({ type: 'clip', text: t.slice(0, 100000) });
+    queue({ type: 'keydown', key: 'v' }); queue({ type: 'keyup', key: 'v' });
+    if (t.length > 100000) toast('10만 자까지만 보냅니다');
+  });
+  kbd.addEventListener('compositionend', e => { if (e.data) queue({ type: 'text', text: e.data }); kbd.value = ''; });
+  kbd.addEventListener('input', e => { if (!e.isComposing) kbd.value = ''; });
+}
+</script>
+</body>
+</html>

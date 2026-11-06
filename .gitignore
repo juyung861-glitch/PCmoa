@@ -1,0 +1,29 @@
+# 실행하면 생기는 데이터·비밀 (절대 올리지 않음)
+server/config.json
+server/pcs.db
+server/pcs.db-*
+server/uploads/
+server/api_keys/
+*.tmp
+agent/agent.json
+server/python-embed.zip
+agent/dist/
+agent/build/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS·편집기
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+agent/agent.log
+agent/agent.log.old
+agent/agent.py.bak
+agent/agent.py.new
+agent/agent.alive

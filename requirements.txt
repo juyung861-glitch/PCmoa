@@ -1,0 +1,13 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+bcrypt>=4.1   # 예전 비밀번호 해시 확인용 (새 해시는 PBKDF2-SHA256)
+cryptography>=42
+paramiko>=3.4
+psutil>=5.9
+pywinrm>=0.4
+# 화면 캡처 확인 (에이전트 PC에만 필요, 선택)
+mss>=9
+pillow>=10
+pynput>=1.7   # 화면 조종 (에이전트 PC, 없으면 자동 설치 시도)
+truststore>=0.9   # 기관 망 SSL 검사 대응 (OS 인증서 저장소 사용)
