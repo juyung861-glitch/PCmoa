@@ -6,6 +6,7 @@
 자동 시작:  python agent.py --install  → 로그인 시 자동 실행 등록 (Windows 작업 스케줄러 / Linux systemd --user)
 이후:       python agent.py            → agent.json의 PC별 토큰으로 바로 연결
 옵션:       --enroll <등록 토큰>  관리자용 일괄 등록   --dry-run  종료/재부팅을 실제로 실행하지 않음
+            --allow-sleep  연결 중에도 절전 허용 (기본은 연결 프로그램이 켜져 있는 동안 절전 막기)
 삭제:       python agent.py --uninstall  → 자동 시작 해제 + 실행 중인 연결 프로그램 종료 + 등록 정보 삭제
 """
 import os
@@ -1472,6 +1473,53 @@ def single_instance(port: int = 47651, wait: float = 15) -> bool:
             time.sleep(0.5)
 
 
+_INHIBIT_PROC = None
+
+
+def keep_awake() -> str:
+    """연결 프로그램이 켜져 있는 동안 PC가 절전(대기)에 들어가지 않게 한다. 화면 끄기는 막지 않는다.
+    프로그램이 꺼지면(정상 종료·강제 종료 모두) OS가 알아서 풀어 준다. 결과를 한 줄로 돌려준다."""
+    global _INHIBIT_PROC
+    if WIN:
+        # ES_CONTINUOUS | ES_SYSTEM_REQUIRED — 이 스레드(메인 반복)가 살아 있는 동안 유지
+        try:
+            import ctypes
+            if ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001):
+                return "켜짐"
+            return "실패(SetThreadExecutionState)"
+        except Exception as e:
+            return f"실패({e})"
+    # Linux: systemd-inhibit로 절전을 막는다. 'tail --pid'는 이 프로세스가 죽으면 같이 끝나 막기가 풀린다
+    if not shutil.which("systemd-inhibit"):
+        return "건너뜀(systemd-inhibit 없음)"
+    try:
+        _INHIBIT_PROC = subprocess.Popen(
+            ["systemd-inhibit", "--what=sleep", "--who=PCmoa", "--why=PCmoa 연결 유지", "--mode=block",
+             "tail", f"--pid={os.getpid()}", "-f", "/dev/null"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(0.5)
+        if _INHIBIT_PROC.poll() is not None:     # 권한(polkit) 등으로 바로 끝났으면 실패
+            return "실패(권한 없음일 수 있음)"
+        return "켜짐"
+    except Exception as e:
+        return f"실패({e})"
+
+
+def allow_sleep() -> None:
+    """절전 막기 해제 (종료할 때)."""
+    if WIN:
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+        except Exception:
+            pass
+    elif _INHIBIT_PROC and _INHIBIT_PROC.poll() is None:
+        try:
+            _INHIBIT_PROC.terminate()
+        except Exception:
+            pass
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--server", help="예: http://192.168.0.10:8000 (생략하면 물어봄)")
@@ -1483,6 +1531,7 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-screen", action="store_true", help="이 PC의 화면 보기·조종을 거부")
     ap.add_argument("--no-update", action="store_true", help="메인 PC의 새 버전으로 자동 업데이트하지 않음")
+    ap.add_argument("--allow-sleep", action="store_true", help="연결 중에도 이 PC가 절전에 들어가도 됨 (기본: 연결 중 절전 막기)")
     ap.add_argument("--install-admin", action="store_true", help="(Windows) 관리자 권한으로 자동 실행 — 관리자 권한 창도 조종 가능")
     ap.add_argument("--uninstall", action="store_true", help="이 PC에서 연결 프로그램 걷어 내기 (자동 시작 해제·종료·등록 정보 삭제)")
     a = ap.parse_args()
@@ -1560,6 +1609,12 @@ def main() -> None:
     if not single_instance():
         print("[agent] 이 PC에서 연결 프로그램이 이미 실행 중입니다 — 이 창은 닫아도 됩니다"); sys.exit(4)
     print(f"[agent] {hostname} ({osname}) → {server}  (이 창을 닫으면 연결이 끊깁니다)")
+    if not a.allow_sleep:
+        r = keep_awake()
+        print(f"[agent] 절전 막기: {r} — 연결 프로그램이 켜져 있는 동안 이 PC는 절전에 들어가지 않습니다 (화면 꺼짐은 그대로)"
+              if r == "켜짐" else f"[agent] 절전 막기: {r} — 절전에 들어가면 대시보드에 '응답 없음'으로 보일 수 있습니다")
+        import atexit
+        atexit.register(allow_sleep)
     INBOX.mkdir(parents=True, exist_ok=True)   # 명령의 작업 폴더이자 받은 파일 저장 위치
     last_term = 0.0
     screening = False
