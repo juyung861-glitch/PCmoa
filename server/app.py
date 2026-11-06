@@ -218,6 +218,8 @@ def init_db() -> None:
                 con.execute(f"ALTER TABLE pc_status ADD COLUMN {col} {typ}")
         if "remote_enabled" not in pcols:   # v0.6: 원격 접속 켜기/끄기 (전원과 별개)
             con.execute("ALTER TABLE pcs ADD COLUMN remote_enabled INTEGER DEFAULT 1")
+        if "keep_awake" not in pcols:   # v2.8: 연결 중 절전 막기 (대시보드에서 PC마다 켜기/끄기)
+            con.execute("ALTER TABLE pcs ADD COLUMN keep_awake INTEGER DEFAULT 1")
         if not con.execute("SELECT 1 FROM users").fetchone():
             # 첫 실행: 코드·설정 파일에 기본 비밀번호를 두지 않고, 무작위 비밀번호를 만들어 콘솔에 한 번만 보여 준다
             global FIRST_ADMIN_PW
@@ -608,6 +610,7 @@ class Heartbeat(BaseModel):
     screen_off: bool = False
     last_crash: str = ""                 # 지킴이가 다시 띄웠다면 그 이유 (첫 heartbeat에만)
     shells: list = []                    # 그 PC에서 쓸 수 있는 터미널 셸 [{"id","name"}]
+    awake: str = ""                      # 절전 막기 상태: "on" · "off" · "fail:<이유>" (비어 있으면 예전 에이전트)
     ram_used: Optional[float] = None     # GB
     ram_total: Optional[float] = None
     gpu: Optional[float] = None          # % (없으면 None — GPU 정보를 못 읽는 PC)
@@ -655,7 +658,7 @@ def list_pcs(owner: Optional[str] = None) -> list[dict]:
     """owner를 주면 그 계정의 PC만"""
     with db() as con:
         rows = con.execute(
-            """SELECT p.id,p.name,p.ip,p.mac,p.hostname,p.os,p.is_main,p.group_id,p.remote_enabled,p.method,p.channel,p.ssh_user,p.ssh_port,p.ssh_key_path,
+            """SELECT p.id,p.name,p.ip,p.mac,p.hostname,p.os,p.is_main,p.group_id,p.remote_enabled,p.keep_awake,p.method,p.channel,p.ssh_user,p.ssh_port,p.ssh_key_path,
                       (p.agent_token<>'') AS has_token, (p.ssh_password_enc<>'') AS has_ssh_pw,
                       s.state,s.source,s.checked_at,s.last_seen,s.cpu,s.mem,s.uptime,s.ram_used,s.ram_total,s.gpu,s.gpu_name,s.vram_used,s.vram_total
                FROM pcs p LEFT JOIN pc_status s ON s.pc_id=p.id WHERE (? IS NULL OR p.owner=?) ORDER BY p.group_id, p.is_main DESC, p.name""",
@@ -666,6 +669,7 @@ def list_pcs(owner: Optional[str] = None) -> list[dict]:
         d = dict(r)
         d["is_server"] = d["ip"] in (sip, "127.0.0.1")   # 대시보드 서버가 도는 PC
         d["shells"] = agent_info.get(d["id"], {}).get("shells") or []
+        d["awake"] = agent_info.get(d["id"], {}).get("awake", "")   # 에이전트가 실제로 적용한 절전 막기 상태
         d["state"] = d["state"] or "unknown"
         d["has_token"] = bool(d["has_token"])
         d["has_ssh_pw"] = bool(d["has_ssh_pw"])
@@ -1184,6 +1188,18 @@ async def set_remote(pc_id: int, body: dict, u: dict = Depends(require("operator
         if t:
             t.active = False
     log_event(pc_id, "remote_on" if on else "remote_off", u["user"])
+    await hub.push_pcs()
+    return {"ok": True, "enabled": bool(on)}
+
+
+@app.post("/api/pcs/{pc_id}/awake")
+async def set_awake(pc_id: int, body: dict, u: dict = Depends(require("operator"))) -> dict:
+    """연결 중 절전 막기 켜기/끄기 — 다음 heartbeat(수 초 안)에 연결 프로그램이 적용한다"""
+    get_pc(pc_id, u["user"])
+    on = 1 if body.get("enabled") else 0
+    with db() as con:
+        con.execute("UPDATE pcs SET keep_awake=? WHERE id=?", (on, pc_id))
+    log_event(pc_id, "awake_on" if on else "awake_off", u["user"])
     await hub.push_pcs()
     return {"ok": True, "enabled": bool(on)}
 
@@ -1963,10 +1979,15 @@ async def heartbeat(body: Heartbeat, pc: sqlite3.Row = Depends(agent_pc)) -> dic
     if body.last_crash:
         log_event(pc["id"], "agent_restart", "agent", "오류로 멈춰 다시 시작됨: " + body.last_crash[:150])
     prev_sh = agent_info.get(pc["id"], {}).get("shells") or []
+    prev_awake = agent_info.get(pc["id"], {}).get("awake", "")
     agent_info[pc["id"]] = {"version": body.version, "screen_err": body.screen_err[:200], "screen_off": body.screen_off, "at": time.time(),
-                            "shells": [x for x in body.shells if isinstance(x, dict) and x.get("id")][:12] or prev_sh}
+                            "shells": [x for x in body.shells if isinstance(x, dict) and x.get("id")][:12] or prev_sh,
+                            "awake": body.awake[:80]}
+    if body.awake != prev_awake:
+        await hub.push_pcs()   # 절전 막기 상태가 바뀌면 카드에 바로 반영
     return {"ok": True, "pc_id": pc["id"], "commands": jobs, "term": term_active(pc["id"]), "screen": bool(v), "viewer": v or "",
             "agent_sha": agent_sha(), "fast": fast_until.get(pc["id"], 0) > time.time(),
+            "keep_awake": bool(pc["keep_awake"]),
             "watched": pc["owner"] in hub.clients.values()}   # 대시보드를 보는 사람이 없으면 에이전트가 GPU 측정을 쉰다
 
 
@@ -3065,4 +3086,13 @@ if __name__ == "__main__":
         print(f"'{name}' 새 비밀번호: {pw}   (로그인 후 설정 → 내 비밀번호 변경에서 바꾸세요)")
     else:
         import uvicorn
+        # 메인(서버) PC가 절전에 들어가면 대시보드 전체가 멈추므로, 서버가 켜져 있는 동안 절전을 막는다 (화면 꺼짐은 그대로)
+        # 끄려면 환경 변수 PCM_ALLOW_SLEEP=1. 서버가 꺼지면 OS가 자동으로 풀어 준다.
+        if os.name == "nt" and not os.environ.get("PCM_ALLOW_SLEEP"):
+            try:
+                import ctypes
+                if ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001):
+                    print(" 절전 막기: 켜짐 — 서버가 켜져 있는 동안 이 PC는 절전에 들어가지 않습니다")
+            except Exception:
+                pass
         uvicorn.run(app, host="0.0.0.0", port=8000)

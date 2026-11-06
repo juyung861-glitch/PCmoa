@@ -248,7 +248,7 @@ body.solo #screenWrap{flex:1;min-height:0} body.solo #screenImg{max-height:calc(
 <body>
 <div class="layout" id="app" style="display:none">
   <aside class="side">
-    <div class="brand"><div class="logo">🖥</div><div><b>PCmoa</b><small>같은 망 PC 연결 관리 v2.7</small></div></div>
+    <div class="brand"><div class="logo">🖥</div><div><b>PCmoa</b><small>같은 망 PC 연결 관리 v2.8</small></div></div>
     <nav class="nav">
       <a href="#" class="active" data-view="pcs"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>PC 목록</a>
       <a href="#" data-view="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg>AI 대화</a>
@@ -525,6 +525,19 @@ function resBars(p) {
   const gb = (a, b) => a != null && b ? `${a.toFixed(1)}/${Math.round(b)}GB` : '';
   return `<div class="rsc">${row('CPU', p.cpu, '')}${row('RAM', p.mem, gb(p.ram_used, p.ram_total))}${row('GPU', p.gpu, p.vram_total ? gb(p.vram_used, p.vram_total) : '', p.gpu == null ? 'GPU 사용률을 읽지 못했습니다 (에이전트 업데이트 대기 중이거나 지원되지 않는 GPU)' : (p.gpu_name || 'GPU'))}</div>`;
 }
+function awakeKo(p) {
+  const want = !!p.keep_awake, a = p.awake || '';
+  if (!a) return want ? '켜짐 <i>(적용 대기)</i>' : '꺼짐';
+  if (a.startsWith('fail')) return '실패';
+  if (a === 'on') return want ? '켜짐' : '켜짐 <i>(끄는 중)</i>';
+  return want ? '꺼짐 <i>(켜는 중)</i>' : '꺼짐';
+}
+function awakeTip(p) {
+  const a = p.awake || '';
+  if (!a) return '연결 프로그램이 아직 상태를 알려 주지 않았습니다 (예전 버전이면 업데이트 후 적용)';
+  if (a.startsWith('fail')) return '이 PC에서 절전 막기를 적용하지 못했습니다: ' + a.slice(5);
+  return '연결 프로그램이 켜져 있는 동안 이 PC가 절전에 들어가지 않게 합니다 (화면 꺼짐은 그대로). 관리 메뉴에서 바꿀 수 있습니다';
+}
 function up(sec) { if (!sec) return '-'; const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60); return h ? `${h}시간 ${m}분` : `${m}분`; }
 function can(role) { return ({ viewer: 0, operator: 1, admin: 2 })[me.role] >= ({ viewer: 0, operator: 1, admin: 2 })[role]; }
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -551,7 +564,7 @@ function render() {
         <span class="sbadge ${p.state}">${stKo}</span>
         ${op ? `<button class="more" data-act="menu" title="관리">⋯</button>` : ''}
       </div>
-      <div class="kv"><span>IP 주소</span><b>${p.ip}</b><span>MAC 주소</span><b>${p.mac || '-'}</b><span>마지막 응답</span><b>${ago(p.last_seen)}</b><span>연결 방식</span><b>${CH_KO[p.channel]}${p.method !== 'auto' ? ` <i>(${METHOD_KO[p.method]} 고정)</i>` : ''}${p.source && p.channel === 'none' ? ` <i>· ${p.source}</i>` : ''}</b>${p.source === 'agent' ? `<span>가동 시간</span><b>${up(p.uptime)}</b>` : ''}</div>
+      <div class="kv"><span>IP 주소</span><b>${p.ip}</b><span>MAC 주소</span><b>${p.mac || '-'}</b><span>마지막 응답</span><b>${ago(p.last_seen)}</b><span>연결 방식</span><b>${CH_KO[p.channel]}${p.method !== 'auto' ? ` <i>(${METHOD_KO[p.method]} 고정)</i>` : ''}${p.source && p.channel === 'none' ? ` <i>· ${p.source}</i>` : ''}</b>${p.source === 'agent' ? `<span>가동 시간</span><b>${up(p.uptime)}</b>` : ''}${p.channel === 'agent' ? `<span>절전 막기</span><b title="${esc(awakeTip(p))}">${awakeKo(p)}</b>` : ''}</div>
       ${p.source === 'agent' && p.state === 'online' ? resBars(p) : ''}
       ${op ? `<div class="sect">PC 제어</div>
       <button class="big ${p.remote_enabled ? 'off' : ''}" data-act="remote" title="${p.remote_enabled ? '이 PC로 가는 명령·터미널·캡처를 막습니다 (전원은 그대로)' : '원격 접속을 허용합니다'}">${ICON.remote} ${p.remote_enabled ? '원격 접속 끄기' : '원격 접속 시작'}</button>
@@ -745,7 +758,7 @@ $('#termClose').onclick = () => { $('#termModal').classList.remove('show'); if (
 function openMenu(anchor, pc) {
   $('#cmenu')?.remove();
   const m = document.createElement('div'); m.id = 'cmenu'; m.className = 'cmenu';
-  m.innerHTML = `<div data-m="hist">☰ 이 PC 기록 보기 (활동·명령·AI 대화)</div><div data-m="edit">✎ 편집 (이름·계정·연결 방식)</div><div data-m="diag">? 경로 진단</div><div data-m="move">⇄ 그룹 이동</div><div data-m="delete" class="danger">✕ 목록에서 삭제 (다시 연결하려면 새 코드 필요)</div>`;
+  m.innerHTML = `<div data-m="hist">☰ 이 PC 기록 보기 (활동·명령·AI 대화)</div><div data-m="edit">✎ 편집 (이름·계정·연결 방식)</div><div data-m="diag">? 경로 진단</div>${pc.channel === 'agent' ? `<div data-m="awake">☾ 연결 중 절전 막기: ${pc.keep_awake ? '켜짐 → 끄기' : '꺼짐 → 켜기'}</div>` : ''}<div data-m="move">⇄ 그룹 이동</div><div data-m="delete" class="danger">✕ 목록에서 삭제 (다시 연결하려면 새 코드 필요)</div>`;
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(); m.style.top = (r.bottom + window.scrollY + 4) + 'px'; m.style.left = Math.min(r.left + window.scrollX, window.innerWidth - 240) + 'px';
   m.onclick = async e => {
@@ -754,6 +767,7 @@ function openMenu(anchor, pc) {
       if (k === 'hist') openHistory(pc, 'log');
       if (k === 'edit') openAdd(pc);
       if (k === 'diag') { const d = await api(`/api/pcs/${pc.id}/diagnose`); openCmd([pc]); $('#cmdResults').innerHTML = `<div class="res"><div class="h"><b>경로 진단</b><span>설정 ${METHOD_KO[d.method]} → 판정 ${CH_KO[d.resolved]}</span></div><pre>${d.steps.map(s => `${s.ok ? '✔' : '✘'} ${esc(s.name)}${s.detail ? '  — ' + esc(s.detail) : ''}`).join('\n')}</pre></div>`; }
+      if (k === 'awake') { await api(`/api/pcs/${pc.id}/awake`, { method: 'POST', body: JSON.stringify({ enabled: !pc.keep_awake }) }); toast(pc.keep_awake ? '절전 막기를 끕니다 — 몇 초 안에 적용됩니다' : '절전 막기를 켭니다 — 몇 초 안에 적용됩니다'); }
       if (k === 'move') { selected.clear(); selected.add(pc.id); render(); $('#moveBtn').click(); }
       if (k === 'delete') { if (confirm(`${pc.name}을(를) 목록에서 삭제할까요?\n\nPC 자체에는 영향이 없지만 등록이 사라져, 다시 연결하려면 그 PC에서 새 연결 코드로 등록해야 합니다.\n잠깐 막고 싶은 거라면 '원격 접속 끄기'를 쓰세요.`)) await api(`/api/pcs/${pc.id}`, { method: 'DELETE' }); }
     } catch (err) { toast(err.message); }

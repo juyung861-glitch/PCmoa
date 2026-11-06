@@ -1474,6 +1474,8 @@ def single_instance(port: int = 47651, wait: float = 15) -> bool:
 
 
 _INHIBIT_PROC = None
+_AWAKE_WANT = [True]   # 마지막으로 서버가 원한 값
+AWAKE = ""        # 절전 막기 상태 — heartbeat로 서버에 알린다: "on" · "off" · "fail:<이유>"
 
 
 def keep_awake() -> str:
@@ -1518,6 +1520,34 @@ def allow_sleep() -> None:
             _INHIBIT_PROC.terminate()
         except Exception:
             pass
+
+
+def awake_retry() -> None:
+    global AWAKE
+    if AWAKE.startswith("fail"):
+        AWAKE = ""
+
+
+def apply_awake(want: bool, why_off: str = "") -> None:
+    """절전 막기를 원하는 상태로 맞춘다. 실패한 상태는 원하는 값이 바뀔 때만 다시 시도한다 (5초마다 재시도하지 않게).
+    반드시 메인 반복을 도는 스레드에서 부른다 — Windows는 부른 스레드가 살아 있는 동안만 유지된다."""
+    global AWAKE, _INHIBIT_PROC
+    if want:
+        if AWAKE == "on" or AWAKE.startswith("fail"):
+            return
+        r = keep_awake()
+        AWAKE = "on" if r == "켜짐" else "fail:" + r
+        print(f"[agent] 절전 막기: {r}" + (" — 연결 프로그램이 켜져 있는 동안 이 PC는 절전에 들어가지 않습니다 (화면 꺼짐은 그대로)"
+                                         if r == "켜짐" else " — 절전에 들어가면 대시보드에 '응답 없음'으로 보일 수 있습니다"))
+    else:
+        target = "fail:" + why_off if why_off else "off"
+        if AWAKE == target:
+            return
+        if AWAKE == "on":
+            allow_sleep()
+            _INHIBIT_PROC = None
+            print("[agent] 절전 막기: 꺼짐 — 이 PC는 원래 전원 설정대로 절전에 들어갑니다")
+        AWAKE = target
 
 
 def main() -> None:
@@ -1609,12 +1639,10 @@ def main() -> None:
     if not single_instance():
         print("[agent] 이 PC에서 연결 프로그램이 이미 실행 중입니다 — 이 창은 닫아도 됩니다"); sys.exit(4)
     print(f"[agent] {hostname} ({osname}) → {server}  (이 창을 닫으면 연결이 끊깁니다)")
-    if not a.allow_sleep:
-        r = keep_awake()
-        print(f"[agent] 절전 막기: {r} — 연결 프로그램이 켜져 있는 동안 이 PC는 절전에 들어가지 않습니다 (화면 꺼짐은 그대로)"
-              if r == "켜짐" else f"[agent] 절전 막기: {r} — 절전에 들어가면 대시보드에 '응답 없음'으로 보일 수 있습니다")
-        import atexit
-        atexit.register(allow_sleep)
+    # 절전 막기: 처음엔 켜 두고, 이후로는 대시보드(관리 메뉴)에서 정한 값을 heartbeat로 받아 따른다
+    apply_awake(not a.allow_sleep, "이 PC에서 --allow-sleep으로 실행 중" if a.allow_sleep else "")
+    import atexit
+    atexit.register(allow_sleep)
     INBOX.mkdir(parents=True, exist_ok=True)   # 명령의 작업 폴더이자 받은 파일 저장 위치
     last_term = 0.0
     screening = False
@@ -1629,7 +1657,15 @@ def main() -> None:
             res = call(f"{server}/agent/heartbeat", {"hostname": hostname, "os": osname, **metrics(),
                                                       "version": AGENT_SHA[:12], "screen_err": SCREEN_ERR,
                                                       "screen_off": a.no_screen, "last_crash": os.environ.pop("PCM_LAST_CRASH", ""),
-                                                      "shells": SHELLS}, token)
+                                                      "shells": SHELLS, "awake": AWAKE}, token)
+            want_awake = bool(res.get("keep_awake", True))   # 대시보드 관리 메뉴의 '연결 중 절전 막기'
+            if a.allow_sleep:
+                apply_awake(False, "이 PC에서 --allow-sleep으로 실행 중" if want_awake else "")
+            else:
+                if want_awake and not _AWAKE_WANT[0]:
+                    awake_retry()             # 껐다가 다시 켜면 실패했던 것도 한 번 더 시도
+                apply_awake(want_awake)
+            _AWAKE_WANT[0] = want_awake
             if res.get("agent_sha") and AGENT_SHA and res["agent_sha"] != AGENT_SHA and not a.no_update:
                 self_update(server, res["agent_sha"])
             if res.get("term"):
