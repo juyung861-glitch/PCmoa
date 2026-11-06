@@ -1992,7 +1992,7 @@ def agent_file(file_id: str, pc: sqlite3.Row = Depends(agent_pc)) -> Response:
     return FileResponse(UPLOADS / file_id, filename=f["name"])
 
 
-# ---- AI 명령: 자연어 → PC별 명령 계획 (Claude API). 실행은 항상 사람이 검토·확인한 뒤에만.
+# ---- AI (대화): Claude·GPT·Gemini API. 실행은 항상 사람이 검토·확인한 뒤에만.
 LLM_URL = "https://api.anthropic.com/v1/messages"
 
 
@@ -2399,72 +2399,7 @@ def set_settings(body: dict, u: dict = Depends(require("operator"))) -> dict:
     return {"ok": True}
 
 
-PLAN_SYSTEM = """당신은 LAN 안의 여러 PC를 관리하는 도구의 명령 계획자다. 사용자의 요청을 각 PC에서 실행할 셸 명령으로 바꾼다.
-규칙:
-- Windows PC는 PowerShell, Linux PC는 bash 명령을 쓴다. 각 PC의 OS를 보고 맞춘다.
-- 파괴적인 작업(삭제, 포맷, 종료, 서비스 중지 등)은 반드시 "risk": "high"로 표시하고 이유를 쓴다.
-- 확인만 하는 작업은 "risk": "low".
-- 명령은 비대화형이어야 한다(입력을 기다리면 안 됨). 긴 출력은 적당히 줄인다(Select -First 20, head -n 20 등).
-- 할 수 없거나 불명확하면 steps를 비우고 "question"에 사용자에게 물을 것을 쓴다.
-- 반드시 JSON만 출력한다: {"summary": "한 줄 설명", "steps": [{"pc_id": 1, "cmd": "...", "why": "..." , "risk": "low|high"}], "question": ""}"""
-
-
-@app.post("/api/ai/plan")
-async def ai_plan(body: dict, u: dict = Depends(require("operator"))) -> dict:
-    prompt = (body.get("prompt") or "").strip()
-    pc_ids = [int(i) for i in body.get("pc_ids", [])]
-    prior = body.get("prior") or []          # [{pc_id, cmd, exit_code, output}] 이전 실행 결과 (이어가기)
-    if not prompt or not pc_ids:
-        raise HTTPException(400, "요청 내용과 대상 PC가 필요합니다")
-    pcs_all = {p["id"]: p for p in list_pcs(u["user"])}
-    targets = [pcs_all[i] for i in pc_ids if i in pcs_all]
-    desc = "\n".join(f"- pc_id={p['id']} 이름={p['name']} OS={p['os'] or '모름'} 경로={p['channel']} 상태={p['state']}" for p in targets)
-    user_msg = f"대상 PC:\n{desc}\n\n요청: {prompt}"
-    if prior:
-        user_msg += "\n\n이전 실행 결과:\n" + "\n".join(
-            f"[pc_id={r.get('pc_id')}] $ {r.get('cmd')}\n(exit {r.get('exit_code')})\n{(r.get('output') or '')[-1500:]}" for r in prior)
-        user_msg += "\n\n위 결과를 바탕으로 요청을 이어서 처리할 다음 단계를 계획하라. 끝났으면 steps를 비우고 summary에 결론을 써라."
-    if os.environ.get("PCM_LLM_MOCK"):   # 테스트용 가짜 응답
-        text = json.dumps({"summary": "(mock) 호스트명과 디스크 확인", "steps": [
-            {"pc_id": p["id"], "cmd": "hostname; df -h / | tail -1" if not (p["os"] or "").lower().startswith("win") else "hostname; Get-PSDrive C | Select Used,Free",
-             "why": "확인용", "risk": "low"} for p in targets], "question": ""}, ensure_ascii=False)
-    else:
-        st = llm_settings(u["user"])
-        if not st["api_key"]:
-            raise HTTPException(400, "설정 탭에서 API 키(Claude·GPT·Gemini)를 먼저 넣어 주세요")
-        try:
-            # Claude는 "{"로 시작하게 해서 JSON만 받는다. 다른 서비스는 앞뒤 잡문이 있어도 아래에서 JSON을 찾아낸다
-            res = llm_messages(st, PLAN_SYSTEM, [{"role": "user", "content": user_msg}], 4000, timeout=90,
-                               prefill="{" if st["provider"] == "anthropic" else "")
-            ks_record(u["user"], st["key_id"], res)
-            text = "".join(b.get("text", "") for b in res.get("content", []) if b.get("type") == "text")
-            if text.strip() in ("", "{"):
-                kinds = ",".join(b.get("type", "?") for b in res.get("content", [])) or "없음"
-                raise HTTPException(502, f"AI가 빈 응답을 보냈습니다 (stop_reason={res.get('stop_reason')}, 블록={kinds}). 모델명을 확인하세요: {st['model']}")
-        except HTTPException:
-            raise
-        except urllib.error.HTTPError as e:
-            ks_record(u["user"], st["key_id"], error=f"HTTP {e.code}")
-            raise HTTPException(502, f"{PROVIDERS[st['provider']]['label']} API 오류 {e.code}: {_http_msg(e)}")
-        except Exception as e:
-            raise HTTPException(502, f"{PROVIDERS[st['provider']]['label']} API 연결 실패: {e}")
-    plan = None
-    t = text.replace("```json", "").replace("```", "")
-    for start in [i for i, c in enumerate(t) if c == "{"][:5]:     # 앞부분 잡문이 있어도 첫 유효 JSON을 찾는다
-        try:
-            plan, _ = json.JSONDecoder().raw_decode(t[start:])
-            if isinstance(plan, dict):
-                break
-        except Exception:
-            plan = None
-    if not isinstance(plan, dict):
-        print("[ai_plan] 해석 실패 원문:", text[:2000])
-        raise HTTPException(502, "AI 응답을 계획으로 해석하지 못했습니다 (서버 콘솔에 원문). 앞부분: " + (text[:200] or "(빈 응답)"))
-    steps = [s for s in plan.get("steps", []) if isinstance(s, dict) and int(s.get("pc_id", 0)) in pcs_all and s.get("cmd")]
-    for st_ in steps:
-        st_["pc_id"] = int(st_["pc_id"]); st_["pc_name"] = pcs_all[st_["pc_id"]]["name"]; st_.setdefault("risk", "low")
-    log_event(None, "ai_plan", u["user"], prompt[:120])
-    return {"summary": plan.get("summary", ""), "steps": steps, "question": plan.get("question", "")}
+# (v2.7) 예전 "AI 명령"(/api/ai/plan)은 AI 대화로 합쳐 없앴다
 
 
 # ---- AI 대화 (세션별 채팅으로 PC 조종) -------------------------------------------------------------

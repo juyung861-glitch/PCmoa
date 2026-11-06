@@ -270,7 +270,7 @@ body.solo #screenWrap{flex:1;min-height:0} body.solo #screenImg{max-height:calc(
       <div class="icon">⌁</div>
       <div><h1><span id="pageTitle">PC 목록</span> <span class="badge" id="countBadge">0 / 0</span></h1><p id="pageSub">같은 대역 PC의 실시간 상태</p></div>
       <div class="spacer"></div>
-      <div class="tb op"><button id="aiBtn" title="자연어로 적으면 AI가 PC별 명령 계획을 만들고, 검토 후 실행">✦ AI 명령</button><button id="batchBtn" disabled>선택 PC에 명령 (0)</button><button id="moveBtn" disabled>그룹 이동</button></div>
+      <div class="tb op"><button id="aiBtn" title="AI 대화를 새로 열어 말로 PC에 일을 시킵니다 (체크한 PC가 있으면 그 PC를 대상으로)">✦ AI 대화</button><button id="batchBtn" disabled>선택 PC에 명령 (0)</button><button id="moveBtn" disabled>그룹 이동</button></div>
       <div class="tb"><button id="refreshBtn" title="새로고침">↻</button></div>
       <div class="tb op"><button class="primary" id="pairBtn">⚡ PC 연결</button><button id="addBtn" title="IP로 직접 추가">+ IP</button></div>
     </div>
@@ -391,7 +391,7 @@ New-NetFirewallRule -Name sshd -DisplayName "OpenSSH" -Direction Inbound -Protoc
         <p class="note">PC 연결은 상단 ⚡ PC 연결의 코드로만 합니다. 토큰은 서버가 자동으로 관리하며, 같은 PC는 토큰이 바뀌어도 스스로 다시 붙습니다.</p>
         <p class="note">권한 — admin: 전부 / operator: PC 추가·명령·전원 / viewer: 조회만</p></div>
       <div class="hcard op"><h3>내 API 키 <span style="font-weight:400;font-size:12px;color:var(--muted)">이 계정 전용</span></h3>
-        <p class="note">키를 여러 개 등록해 두고 하나를 골라 씁니다(AI 명령·AI 대화). <b>Claude(Anthropic)·GPT(OpenAI)·Gemini(Google)</b> 키를 쓸 수 있고, 어느 서비스 키인지는 자동으로 알아냅니다. 키마다 모델과 사용량(요청 수·토큰)이 따로 쌓입니다. 키는 서버의 <code>server/api_keys/</code>에 계정별로 암호화되어 저장되고 Git에는 올라가지 않으며, 화면에는 앞뒤 일부만 보입니다.</p>
+        <p class="note">키를 여러 개 등록해 두고 하나를 골라 씁니다(AI 대화). <b>Claude(Anthropic)·GPT(OpenAI)·Gemini(Google)</b> 키를 쓸 수 있고, 어느 서비스 키인지는 자동으로 알아냅니다. 키마다 모델과 사용량(요청 수·토큰)이 따로 쌓입니다. 키는 서버의 <code>server/api_keys/</code>에 계정별로 암호화되어 저장되고 Git에는 올라가지 않으며, 화면에는 앞뒤 일부만 보입니다.</p>
         <div id="keyTotal" class="ksum">-</div>
         <div id="keyList"></div>
         <form id="keyAdd" class="kadd"><input name="name" placeholder="이름 (예: 개인, 팀 공용)" maxlength="40"><input name="key" type="password" placeholder="API 키 (Claude sk-ant-… · GPT sk-… · Gemini AIza…)" autocomplete="off"><input name="model" placeholder="모델 (비우면 서비스별 기본값)"><button class="primary">+ 키 추가</button></form>
@@ -473,20 +473,6 @@ New-NetFirewallRule -Name sshd -DisplayName "OpenSSH" -Direction Inbound -Protoc
   <div style="display:flex;align-items:center;gap:12px"><h2 id="termTitle" style="margin:0;font-size:16px">터미널</h2><span id="termInfo" style="font-size:12px;color:var(--muted)"></span><select id="termShell" title="셸 고르기 — 바꾸면 새 셸로 다시 연결" style="display:none;width:auto;font-size:12px;padding:4px 8px"></select><div style="flex:1"></div><button type="button" class="ghost" id="termClose">닫기</button></div>
   <div class="term" id="term"></div>
   <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">SSH 경로는 진짜 터미널(PTY)이고, 에이전트 경로는 줄 단위로 전달됩니다(대화형 프로그램 제한, Ctrl+C는 셸 재시작). 모든 세션은 활동 로그에 남습니다.</p>
-</div></div>
-
-<div class="modal" id="aiModal"><div class="box wide"><h2>✦ AI 명령</h2>
-  <div class="tip" style="margin:0"><b>대상:</b> <span id="aiTargets">-</span> <span style="color:var(--faint)">(카드에서 체크한 PC. 없으면 온라인 PC 전부)</span></div>
-  <label>하고 싶은 일을 그냥 적으세요</label>
-  <textarea id="aiPrompt" placeholder="예: 각 PC의 디스크 남은 용량을 확인하고 10GB 미만인 PC를 알려줘&#10;예: inbox 폴더의 run.py를 실행하고 결과를 보여줘&#10;예: Python 버전을 확인하고 3.10 미만이면 알려줘"></textarea>
-  <div class="actions"><span id="aiStatus" style="font-size:12px;color:var(--muted);margin-right:auto"></span><button class="primary" id="aiPlan">계획 만들기</button></div>
-  <div id="aiPlanBox" class="hide">
-    <div class="tip" style="margin:0"><b id="aiSummary"></b><div id="aiQuestion" style="color:var(--warn)"></div></div>
-    <table class="tbl" id="aiSteps"></table>
-    <div class="actions"><span style="font-size:12px;color:var(--muted);margin-right:auto">명령은 수정할 수 있고, 체크한 것만 실행됩니다. 위험(high) 단계는 기본 해제.</span><label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin-right:10px"><input type="checkbox" id="aiShot" checked style="width:15px;height:15px;accent-color:var(--accent)">실행 뒤 화면 캡처로 확인 (에이전트 PC)</label><button class="primary" id="aiRun">체크한 단계 실행</button></div>
-  </div>
-  <label>결과</label><div class="results" id="aiResults"></div>
-  <div class="actions"><button class="ghost" id="aiNext" disabled>결과를 보고 다음 단계 계획</button><button type="button" class="ghost" id="aiClose">닫기</button></div>
 </div></div>
 
 <div class="modal" id="cmdModal"><div class="box wide"><h2 id="cmdTitle">명령</h2>
@@ -918,55 +904,15 @@ async function renderLog() {
 }
 function openHistory(pc, view) { histPc = pc.id; $(`.nav a[data-view="${view || 'log'}"]`).click(); }
 
-// ---- AI 명령
-let aiState = { targets: [], steps: [], results: [] };
-$('#aiBtn').onclick = () => {
-  const t = selected.size ? pcs.filter(p => selected.has(p.id)) : pcs.filter(p => p.state === 'online' && p.channel !== 'none');
-  if (!t.length) return toast('대상 PC가 없습니다 — 온라인 PC를 체크하세요');
-  aiState = { targets: t, steps: [], results: [] };
-  $('#aiTargets').innerHTML = t.map(p => `${esc(p.name)} <span style="color:var(--faint)">(${esc(p.os || '?')})</span>`).join(', ');
-  $('#aiPlanBox').classList.add('hide'); $('#aiResults').innerHTML = ''; $('#aiStatus').textContent = ''; $('#aiNext').disabled = true;
-  $('#aiModal').classList.add('show'); $('#aiPrompt').focus();
-};
-$('#aiClose').onclick = () => $('#aiModal').classList.remove('show');
-async function makePlan(prior) {
-  const prompt = $('#aiPrompt').value.trim(); if (!prompt) return toast('요청을 적어 주세요');
-  $('#aiStatus').textContent = 'AI가 계획을 만드는 중…'; $('#aiPlan').disabled = true;
-  try {
-    const r = await api('/api/ai/plan', { method: 'POST', body: JSON.stringify({ prompt, pc_ids: aiState.targets.map(p => p.id), prior }) });
-    aiState.steps = r.steps; $('#aiSummary').textContent = r.summary || ''; $('#aiQuestion').textContent = r.question || '';
-    $('#aiSteps').innerHTML = r.steps.length ? '<tr><th></th><th>PC</th><th>명령 (수정 가능)</th><th>이유</th><th>위험</th></tr>' + r.steps.map((s, i) => `<tr><td><input type="checkbox" class="aiChk" data-i="${i}" ${s.risk === 'high' ? '' : 'checked'} style="width:16px;height:16px;accent-color:var(--accent)"></td><td>${esc(s.pc_name)}</td><td><input class="aiCmd" data-i="${i}" value="${esc(s.cmd)}" style="font-family:Consolas,monospace;font-size:12px;padding:4px 8px"></td><td style="font-size:12px;color:var(--muted)">${esc(s.why || '')}</td><td style="color:${s.risk === 'high' ? 'var(--danger)' : 'var(--on)'}">${s.risk}</td></tr>`).join('') : '<tr><td style="color:var(--muted)">실행할 단계가 없습니다' + (r.summary ? ' — ' + esc(r.summary) : '') + '</td></tr>';
-    $('#aiPlanBox').classList.remove('hide'); $('#aiStatus').textContent = '';
-  } catch (err) { $('#aiStatus').textContent = err.message; }
-  $('#aiPlan').disabled = false;
-}
-$('#aiPlan').onclick = () => makePlan([]);
-$('#aiNext').onclick = () => makePlan(aiState.results);
-$('#aiRun').onclick = async () => {
-  const picks = $$('.aiChk').filter(c => c.checked).map(c => +c.dataset.i); if (!picks.length) return toast('실행할 단계를 체크하세요');
-  const steps = picks.map(i => ({ ...aiState.steps[i], cmd: $(`.aiCmd[data-i="${i}"]`).value }));
-  if (!confirm(`${steps.length}개 명령을 실행합니다:\n\n` + steps.map(s => `[${s.pc_name}] ${s.cmd}`).join('\n'))) return;
-  $('#aiRun').disabled = true;
-  for (const s of steps) {
-    const pc = pcs.find(p => p.id === s.pc_id) || { name: s.pc_name };
-    try {
-      const r = await api(`/api/pcs/${s.pc_id}/run`, { method: 'POST', body: JSON.stringify({ cmd: s.cmd, timeout: 90 }) });
-      $('#aiResults').insertAdjacentHTML('afterbegin', resBox(pc, r));
-      let res = r;
-      if (r.status === 'pending') {   // 에이전트 경로: 결과가 올 때까지 기다린다 (최대 60초)
-        for (let i = 0; i < 60; i++) { await new Promise(x => setTimeout(x, 1000)); const list = await api(`/api/commands?pc_id=${s.pc_id}`); const c = list.find(x => x.id === r.id); if (c && (c.status === 'done' || c.status === 'failed')) { res = c; await refreshCmd(r.id); break; } }
-      }
-      aiState.results.push({ pc_id: s.pc_id, cmd: s.cmd, exit_code: res.exit_code, output: res.output });
-    } catch (err) { $('#aiResults').insertAdjacentHTML('afterbegin', resBox(pc, { status: 'failed', output: err.message })); aiState.results.push({ pc_id: s.pc_id, cmd: s.cmd, exit_code: -1, output: err.message }); }
-  }
-  if ($('#aiShot').checked) {   // 실행이 끝난 뒤 각 PC 화면을 한 장씩 캡처해 결과에 붙인다
-    for (const pc of [...new Set(steps.map(s => s.pc_id))].map(id => pcs.find(p => p.id === id)).filter(p => p && p.channel === 'agent')) {
-      try { const r = await api(`/api/pcs/${pc.id}/screenshot`, { method: 'POST' }); $('#aiResults').insertAdjacentHTML('afterbegin', resBox(pc, { ...r, output: '실행 후 화면 캡처 — 에이전트가 올리면 표시' }));
-        for (let i = 0; i < 20; i++) { await new Promise(x => setTimeout(x, 1000)); const list = await api(`/api/commands?pc_id=${pc.id}`); const c = list.find(x => x.id === r.id); if (c && (c.status === 'done' || c.status === 'failed')) { await refreshCmd(r.id); break; } } }
-      catch (err) { toast(err.message); }
-    }
-  }
-  $('#aiRun').disabled = false; $('#aiNext').disabled = false;
+// ---- ✦ AI 대화 바로 열기 (v2.7: 예전 "AI 명령" 창은 AI 대화로 합침)
+$('#aiBtn').onclick = async () => {
+  const t = selected.size ? pcs.filter(p => selected.has(p.id)) : [];
+  $('.nav a[data-view="chat"]').click();
+  await new Promise(x => setTimeout(x, 150));
+  $('#chatNew').click();
+  await new Promise(x => setTimeout(x, 400));
+  if (t.length && !$('#chatText').value) $('#chatText').value = t.map(p => p.name).join(', ') + '에서 ';
+  $('#chatText').focus();
 };
 $('#allowSignup').addEventListener('change', async e => { try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ allow_signup: e.target.checked }) }); toast(e.target.checked ? '회원가입을 켰습니다' : '회원가입을 껐습니다'); } catch (err) { toast(err.message); } });
 // ---- 내 API 키 (v1.4)
@@ -974,7 +920,7 @@ const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).t
 async function loadKeys() {
   if (!can('operator')) return;
   let d; try { d = await api('/api/keys'); } catch { return; }
-  $('#keyTotal').textContent = d.keys.length ? `키 ${d.keys.length}개 · 전체 요청 ${d.total.requests}회 · 입력 ${fmtN(d.total.input_tokens)} · 출력 ${fmtN(d.total.output_tokens)} 토큰` + (d.mock ? ' · 테스트 모드' : '') : '등록된 키가 없습니다 — AI 명령·AI 대화를 쓰려면 아래에서 추가하세요';
+  $('#keyTotal').textContent = d.keys.length ? `키 ${d.keys.length}개 · 전체 요청 ${d.total.requests}회 · 입력 ${fmtN(d.total.input_tokens)} · 출력 ${fmtN(d.total.output_tokens)} 토큰` + (d.mock ? ' · 테스트 모드' : '') : '등록된 키가 없습니다 — AI 대화를 쓰려면 아래에서 추가하세요';
   $('#keyList').innerHTML = d.keys.map(k => `
     <div class="krow ${k.active ? 'on' : ''}" data-kid="${k.id}" data-name="${esc(k.name)}" data-model="${esc(k.model)}">
       <div class="kn">${esc(k.name)}${k.active ? '<span class="tag">사용 중</span>' : ''}</div>
