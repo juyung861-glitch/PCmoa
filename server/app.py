@@ -2005,15 +2005,39 @@ KEYS_DIR = BASE / "api_keys"
 KEYS_LOCK = threading.Lock()
 KEY_RX = re.compile(r"sk-ant-[A-Za-z0-9_\-]+")
 
+# 쓸 수 있는 AI 서비스 (v2.7). 키 모양으로 어느 서비스인지 알아낸다.
+# openai·gemini는 둘 다 OpenAI Chat Completions 형식(Gemini는 OpenAI 호환 주소)으로 부른다.
+PROVIDERS = {
+    "anthropic": {"label": "Claude (Anthropic)", "rx": re.compile(r"sk-ant-[A-Za-z0-9_\-]+"), "model": DEFAULT_MODEL,
+                  "host": "api.anthropic.com", "console": "console.anthropic.com → API Keys"},
+    "openai": {"label": "GPT (OpenAI)", "rx": re.compile(r"sk-(?!ant-)[A-Za-z0-9_\-]{20,}"), "model": "gpt-5-mini",
+               "base": "https://api.openai.com/v1", "host": "api.openai.com", "console": "platform.openai.com → API keys"},
+    "gemini": {"label": "Gemini (Google)", "rx": re.compile(r"AIza[0-9A-Za-z_\-]{30,}"), "model": "gemini-2.5-flash",
+               "base": "https://generativelanguage.googleapis.com/v1beta/openai", "host": "generativelanguage.googleapis.com",
+               "console": "aistudio.google.com → Get API key"},
+}
+KEY_HELP = ("지원하는 API 키가 아닙니다. Claude(sk-ant-…), OpenAI GPT(sk-…), Google Gemini(AIza…) 키를 넣어 주세요 — "
+            "발급: console.anthropic.com / platform.openai.com / aistudio.google.com")
+
+
+def detect_key(text: str) -> tuple[str, str]:
+    """붙여넣은 글에서 키만 뽑고 어느 서비스 키인지 알려 준다 ("apikey: …", 따옴표, .env 줄도 됨)"""
+    text = (text or "").strip()
+    for prov in ("anthropic", "gemini", "openai"):   # sk-ant- 를 openai 보다 먼저 본다
+        m = PROVIDERS[prov]["rx"].search(text)
+        if m:
+            return prov, m.group(0)
+    raise HTTPException(400, KEY_HELP)
+
 
 def _ks_path(user: str) -> Path:
     # 아이디는 대소문자를 구분하는데 Windows 파일 이름은 구분하지 않으므로, 이름 대신 해시로 파일을 만든다
     return KEYS_DIR / (hashlib.sha256(user.encode()).hexdigest()[:24] + ".json")
 
 
-def _ks_new_entry(name: str, key: str, model: str) -> dict:
-    return {"id": secrets.token_hex(4), "name": name or "API 키", "provider": "anthropic", "key_enc": enc(key),
-            "hint": key[:10] + "…" + key[-4:], "model": model or DEFAULT_MODEL, "created_at": now(), "last_used": None,
+def _ks_new_entry(name: str, key: str, model: str, provider: str = "anthropic") -> dict:
+    return {"id": secrets.token_hex(4), "name": name or "API 키", "provider": provider, "key_enc": enc(key),
+            "hint": key[:10] + "…" + key[-4:], "model": model or PROVIDERS[provider]["model"], "created_at": now(), "last_used": None,
             "requests": 0, "input_tokens": 0, "output_tokens": 0, "errors": 0, "last_error": ""}
 
 
@@ -2078,6 +2102,8 @@ def ks_record(user: str, kid: Optional[str], res: Optional[dict] = None, error: 
             us = res.get("usage") or {}
             k["input_tokens"] += int(us.get("input_tokens") or 0) + int(us.get("cache_read_input_tokens") or 0) + int(us.get("cache_creation_input_tokens") or 0)
             k["output_tokens"] += int(us.get("output_tokens") or 0)
+            k["input_tokens"] += int(us.get("prompt_tokens") or 0)        # OpenAI 형식
+            k["output_tokens"] += int(us.get("completion_tokens") or 0)
         if error:
             k["errors"] += 1; k["last_error"] = error[:200]
     try:
@@ -2100,17 +2126,24 @@ def llm_settings(user: str) -> dict:
     data = ks_load(user)
     k = next((x for x in data["keys"] if x["id"] == data.get("active")), None) or (data["keys"][0] if data["keys"] else None)
     if not k:
-        return {"api_key": "", "model": DEFAULT_MODEL, "key_id": None, "name": ""}
+        return {"api_key": "", "model": DEFAULT_MODEL, "key_id": None, "name": "", "provider": "anthropic"}
+    return _key_settings(k)
+
+
+def _key_settings(k: dict) -> dict:
     try:
         key = dec(k["key_enc"])
     except Exception:
         key = ""
-    return {"api_key": key, "model": k.get("model") or DEFAULT_MODEL, "key_id": k["id"], "name": k["name"]}
+    prov = k.get("provider") if k.get("provider") in PROVIDERS else "anthropic"
+    return {"api_key": key, "model": k.get("model") or PROVIDERS[prov]["model"], "key_id": k["id"], "name": k["name"], "provider": prov}
 
 
 def _key_view(k: dict, active: Optional[str]) -> dict:
-    return {x: k.get(x) for x in ("id", "name", "provider", "hint", "model", "created_at", "last_used",
-                                   "requests", "input_tokens", "output_tokens", "errors", "last_error")} | {"active": k["id"] == active}
+    prov = k.get("provider") if k.get("provider") in PROVIDERS else "anthropic"
+    return {x: k.get(x) for x in ("id", "name", "hint", "model", "created_at", "last_used",
+                                   "requests", "input_tokens", "output_tokens", "errors", "last_error")} | {
+        "active": k["id"] == active, "provider": prov, "provider_label": PROVIDERS[prov]["label"]}
 
 
 @app.get("/api/keys")
@@ -2119,45 +2152,43 @@ def list_keys(u: dict = Depends(require("operator"))) -> dict:
     act = d.get("active") or (d["keys"][0]["id"] if d["keys"] else None)
     keys = [_key_view(k, act) for k in d["keys"]]
     tot = {f: sum(k[f] for k in keys) for f in ("requests", "input_tokens", "output_tokens")}
-    return {"keys": keys, "active": act, "total": tot, "default_model": DEFAULT_MODEL, "mock": bool(os.environ.get("PCM_LLM_MOCK"))}
+    return {"keys": keys, "active": act, "total": tot, "default_model": DEFAULT_MODEL, "mock": bool(os.environ.get("PCM_LLM_MOCK")),
+            "providers": {k: {"label": v["label"], "model": v["model"]} for k, v in PROVIDERS.items()}}
 
 
 @app.post("/api/keys")
 def add_key(body: dict, u: dict = Depends(require("operator"))) -> dict:
-    m = KEY_RX.search((body.get("key") or "").strip())   # "apikey: sk-ant-…", 따옴표, .env 줄을 붙여넣어도 키만 뽑는다
-    if not m:
-        raise HTTPException(400, "Anthropic API 키가 아닙니다 (sk-ant- 로 시작해야 함). console.anthropic.com → API Keys 에서 발급한 키를 넣어 주세요")
+    prov, key = detect_key(body.get("key") or "")
     name = (body.get("name") or "").strip()[:40]
     def f(d):
-        if any(dec(k["key_enc"]) == m.group(0) for k in d["keys"]):
+        if any(dec(k["key_enc"]) == key for k in d["keys"]):
             raise HTTPException(409, "이미 등록된 키입니다")
         if len(d["keys"]) >= 20:
             raise HTTPException(400, "키는 계정당 20개까지 등록할 수 있습니다")
-        e = _ks_new_entry(name or f"API 키 {len(d['keys']) + 1}", m.group(0), (body.get("model") or "").strip())
+        e = _ks_new_entry(name or f"{PROVIDERS[prov]['label'].split(' ')[0]} 키 {len(d['keys']) + 1}", key, (body.get("model") or "").strip(), prov)
         d["keys"].append(e)
         if not d.get("active") or body.get("activate"):
             d["active"] = e["id"]
         return e
     e = ks_update(u["user"], f)
-    log_event(None, "api_key_add", u["user"], f"{e['name']} ({e['hint']})")
-    return {"ok": True, "id": e["id"]}
+    log_event(None, "api_key_add", u["user"], f"{e['name']} ({PROVIDERS[prov]['label']}, {e['hint']})")
+    return {"ok": True, "id": e["id"], "provider": prov, "model": e["model"]}
 
 
 @app.patch("/api/keys/{kid}")
 def edit_key(kid: str, body: dict, u: dict = Depends(require("operator"))) -> dict:
-    new_key = None
+    new_key = new_prov = None
     if body.get("key"):
-        m = KEY_RX.search(body["key"].strip())
-        if not m:
-            raise HTTPException(400, "Anthropic API 키가 아닙니다 (sk-ant- 로 시작해야 함)")
-        new_key = m.group(0)
+        new_prov, new_key = detect_key(body["key"])
     def f(d):
         k = ks_find(d, kid)
         if body.get("name"):
             k["name"] = body["name"].strip()[:40]
         if "model" in body:
-            k["model"] = (body.get("model") or "").strip() or DEFAULT_MODEL
+            k["model"] = (body.get("model") or "").strip() or PROVIDERS.get(k.get("provider") or "anthropic", PROVIDERS["anthropic"])["model"]
         if new_key:
+            if new_prov != (k.get("provider") or "anthropic"):   # 다른 서비스 키로 바꾸면 모델도 그 서비스 기본값으로
+                k["provider"], k["model"] = new_prov, PROVIDERS[new_prov]["model"]
             k["key_enc"], k["hint"] = enc(new_key), new_key[:10] + "…" + new_key[-4:]
         if body.get("active"):
             d["active"] = kid
@@ -2200,6 +2231,93 @@ def _anthropic(path: str, payload: Optional[dict], key: str, timeout: int = 30) 
         return json.loads(r.read())
 
 
+def _oai_req(prov: str, path: str, payload: Optional[dict], key: str, timeout: int = 30) -> dict:
+    req = urllib.request.Request(PROVIDERS[prov]["base"] + path, method="POST" if payload is not None else "GET",
+                                 data=json.dumps(payload).encode() if payload is not None else None,
+                                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())
+
+
+def _to_openai(system: str, messages: list) -> list:
+    """Anthropic 형식 대화(텍스트·이미지·tool_use·tool_result 블록) → OpenAI Chat Completions 메시지"""
+    out = [{"role": "system", "content": system}] if system else []
+    for m in messages:
+        blocks = m["content"] if isinstance(m["content"], list) else [{"type": "text", "text": m["content"]}]
+        if m["role"] == "assistant":
+            text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+            calls = [{"id": b["id"], "type": "function",
+                      "function": {"name": b["name"], "arguments": json.dumps(b.get("input") or {}, ensure_ascii=False)}}
+                     for b in blocks if b.get("type") == "tool_use"]
+            msg = {"role": "assistant", "content": text or None}
+            if calls:
+                msg["tool_calls"] = calls
+            out.append(msg)
+            continue
+        parts, later_images = [], []
+        for b in blocks:
+            t = b.get("type")
+            if t == "tool_result":   # 도구 결과는 role=tool (글자만) — 캡처 이미지는 바로 뒤 user 메시지로 붙인다
+                inner = b.get("content") if isinstance(b.get("content"), list) else [{"type": "text", "text": str(b.get("content") or "")}]
+                txt = "\n".join(x.get("text", "") for x in inner if x.get("type") == "text") or "(결과 없음)"
+                if b.get("is_error"):
+                    txt = "[오류] " + txt
+                out.append({"role": "tool", "tool_call_id": b["tool_use_id"], "content": txt})
+                later_images += [x for x in inner if x.get("type") == "image"]
+            elif t == "text":
+                parts.append({"type": "text", "text": b.get("text", "")})
+            elif t == "image":
+                later_images.append(b)
+        imgs = [{"type": "image_url", "image_url": {"url": f"data:{x['source'].get('media_type', 'image/jpeg')};base64,{x['source']['data']}"}}
+                for x in later_images if (x.get("source") or {}).get("type") == "base64"]
+        if parts or imgs:
+            out.append({"role": "user", "content": parts + ([{"type": "text", "text": "(캡처 이미지)"}] if imgs and not parts else []) + imgs})
+    return out
+
+
+def llm_messages(st: dict, system: str, messages: list, max_tokens: int, tools: Optional[list] = None,
+                 timeout: int = 120, prefill: str = "") -> dict:
+    """키의 서비스에 맞게 호출하고, 결과는 항상 Anthropic 모양({content:[text/tool_use], stop_reason, usage})으로 돌려준다"""
+    prov = st.get("provider") or "anthropic"
+    if prov == "anthropic":
+        payload = {"model": st["model"], "max_tokens": max_tokens, "system": system, "messages": messages}
+        if tools:
+            payload["tools"] = tools
+        if prefill:
+            payload["messages"] = messages + [{"role": "assistant", "content": prefill}]
+        res = _anthropic("/v1/messages", payload, st["api_key"], timeout)
+        if prefill:
+            for b in res.get("content", []):
+                if b.get("type") == "text":
+                    b["text"] = prefill + b["text"]
+                    break
+        return res
+    payload = {"model": st["model"], "messages": _to_openai(system, messages)}
+    payload["max_completion_tokens" if prov == "openai" else "max_tokens"] = max_tokens
+    if tools:
+        payload["tools"] = [{"type": "function", "function": {"name": t["name"], "description": t.get("description", ""),
+                                                               "parameters": t.get("input_schema") or {"type": "object", "properties": {}}}}
+                            for t in tools]
+    r = _oai_req(prov, "/chat/completions", payload, st["api_key"], timeout)
+    ch = (r.get("choices") or [{}])[0]
+    msg = ch.get("message") or {}
+    content = []
+    if msg.get("content"):
+        content.append({"type": "text", "text": msg["content"]})
+    for c in msg.get("tool_calls") or []:
+        try:
+            args = json.loads((c.get("function") or {}).get("arguments") or "{}")
+        except Exception:
+            args = {}
+        content.append({"type": "tool_use", "id": c.get("id") or f"call_{secrets.token_hex(4)}",
+                        "name": (c.get("function") or {}).get("name", ""), "input": args})
+    fr = ch.get("finish_reason")
+    stop = {"tool_calls": "tool_use", "stop": "end_turn", "length": "max_tokens", "content_filter": "refusal"}.get(fr, fr or "end_turn")
+    if any(b["type"] == "tool_use" for b in content):
+        stop = "tool_use"
+    return {"content": content, "stop_reason": stop, "model": r.get("model", st["model"]), "usage": r.get("usage") or {}}
+
+
 def _http_msg(e: urllib.error.HTTPError) -> str:
     body = e.read().decode(errors="ignore")
     try:
@@ -2211,12 +2329,7 @@ def _http_msg(e: urllib.error.HTTPError) -> str:
 @app.post("/api/keys/{kid}/test")
 def test_key(kid: str, u: dict = Depends(require("operator"))) -> dict:
     d = ks_load(u["user"])
-    k = ks_find(d, kid)
-    try:
-        key = dec(k["key_enc"])
-    except Exception:
-        key = ""
-    return _test_llm(u["user"], {"api_key": key, "model": k.get("model") or DEFAULT_MODEL, "key_id": kid})
+    return _test_llm(u["user"], _key_settings(ks_find(d, kid)))
 
 
 @app.post("/api/settings/test")
@@ -2229,15 +2342,17 @@ def _test_llm(user: str, st: dict) -> dict:
     if os.environ.get("PCM_LLM_MOCK"):
         return {"ok": True, "model": st["model"], "ms": 0, "reply": "(테스트 모드)", "models": []}
     key = st["api_key"]
+    prov = st.get("provider") or "anthropic"
+    P = PROVIDERS[prov]
     if not key:
         return {"ok": False, "error": "API 키가 저장돼 있지 않습니다"}
-    if not key.startswith("sk-ant-"):
-        return {"ok": False, "error": f"저장된 값에 Anthropic 키(sk-ant-…)가 없습니다 (현재 '{key[:6]}…'로 시작, 길이 {len(key)}). "
-                                          "다른 서비스의 키이거나 잘못 복사된 것입니다. console.anthropic.com → API Keys 에서 발급한 키를 붙여넣고 '저장'을 누르세요"}
+    if not P["rx"].fullmatch(key):
+        return {"ok": False, "error": f"저장된 값이 {P['label']} 키 모양이 아닙니다 (현재 '{key[:6]}…'로 시작, 길이 {len(key)}). "
+                                          f"잘못 복사된 것 같습니다. {P['console']} 에서 발급한 키로 '키 교체'를 눌러 주세요"}
     # ①② 모델 목록 — 키만 확인, 모델명과 무관
     try:
-        ms = _anthropic("/v1/models?limit=100", None, key)
-        models = [m["id"] for m in ms.get("data", [])]
+        ms = _anthropic("/v1/models?limit=100", None, key) if prov == "anthropic" else _oai_req(prov, "/models", None, key)
+        models = [m["id"].removeprefix("models/") for m in ms.get("data", [])]
     except urllib.error.HTTPError as e:
         hint = {401: "키가 틀렸거나 폐기됨", 403: "이 키의 권한 부족(워크스페이스 설정 확인)"}.get(e.code, "")
         return {"ok": False, "error": f"② 키 인증 실패 — HTTP {e.code} {hint}: {_http_msg(e)}"}
@@ -2245,7 +2360,7 @@ def _test_llm(user: str, st: dict) -> dict:
         msg = str(e)
         tip = ("기관 망의 SSL 검사 때문일 수 있습니다 → 메인 PC에서 `pip install truststore` 후 서버 재시작"
                if "CERTIFICATE" in msg.upper() else "이 PC(서버)에서 인터넷이 막혀 있거나 프록시가 필요합니다. 다른 곳에서 키가 된다면 이 PC의 네트워크 문제입니다")
-        return {"ok": False, "error": f"① api.anthropic.com 접속 실패: {msg[:160]} — {tip}"}
+        return {"ok": False, "error": f"① {P['host']} 접속 실패: {msg[:160]} — {tip}"}
     # ③ 실제 호출
     model = st["model"]
     if models and model not in models:
@@ -2253,8 +2368,8 @@ def _test_llm(user: str, st: dict) -> dict:
                 "error": f"③ 모델 '{model}'을(를) 이 키로 쓸 수 없습니다. 아래 목록에서 골라 모델 칸에 넣고 저장하세요"}
     t0 = time.time()
     try:
-        res = _anthropic("/v1/messages", {"model": model, "max_tokens": 16,
-                                          "messages": [{"role": "user", "content": "Reply with exactly: OK"}]}, key)
+        # GPT 추론 모델은 생각에도 토큰을 쓰므로 넉넉히 준다
+        res = llm_messages(st, "", [{"role": "user", "content": "Reply with exactly: OK"}], 16 if prov == "anthropic" else 400, timeout=60)
     except urllib.error.HTTPError as e:
         hint = {400: "요청 오류(크레딧 잔액·모델 확인)", 404: "모델 없음", 429: "사용량 한도 초과", 529: "과부하"}.get(e.code, "")
         ks_record(user, st.get("key_id"), error=f"HTTP {e.code}")
@@ -2316,27 +2431,23 @@ async def ai_plan(body: dict, u: dict = Depends(require("operator"))) -> dict:
     else:
         st = llm_settings(u["user"])
         if not st["api_key"]:
-            raise HTTPException(400, "설정 탭에서 Anthropic API 키를 먼저 넣어 주세요")
-        req = urllib.request.Request(LLM_URL, method="POST", data=json.dumps({
-            "model": st["model"], "max_tokens": 4000, "system": PLAN_SYSTEM,
-            "messages": [{"role": "user", "content": user_msg},
-                         {"role": "assistant", "content": "{"}]}).encode(),   # JSON으로 바로 시작하게 한다
-            headers={"Content-Type": "application/json", "x-api-key": st["api_key"], "anthropic-version": "2023-06-01"})
+            raise HTTPException(400, "설정 탭에서 API 키(Claude·GPT·Gemini)를 먼저 넣어 주세요")
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                res = json.loads(r.read())
+            # Claude는 "{"로 시작하게 해서 JSON만 받는다. 다른 서비스는 앞뒤 잡문이 있어도 아래에서 JSON을 찾아낸다
+            res = llm_messages(st, PLAN_SYSTEM, [{"role": "user", "content": user_msg}], 4000, timeout=90,
+                               prefill="{" if st["provider"] == "anthropic" else "")
             ks_record(u["user"], st["key_id"], res)
-            text = "{" + "".join(b.get("text", "") for b in res.get("content", []) if b.get("type") == "text")
-            if text.strip() == "{":
+            text = "".join(b.get("text", "") for b in res.get("content", []) if b.get("type") == "text")
+            if text.strip() in ("", "{"):
                 kinds = ",".join(b.get("type", "?") for b in res.get("content", [])) or "없음"
                 raise HTTPException(502, f"AI가 빈 응답을 보냈습니다 (stop_reason={res.get('stop_reason')}, 블록={kinds}). 모델명을 확인하세요: {st['model']}")
         except HTTPException:
             raise
         except urllib.error.HTTPError as e:
             ks_record(u["user"], st["key_id"], error=f"HTTP {e.code}")
-            raise HTTPException(502, f"Claude API 오류 {e.code}: {e.read().decode(errors='ignore')[:300]}")
+            raise HTTPException(502, f"{PROVIDERS[st['provider']]['label']} API 오류 {e.code}: {_http_msg(e)}")
         except Exception as e:
-            raise HTTPException(502, f"Claude API 연결 실패: {e}")
+            raise HTTPException(502, f"{PROVIDERS[st['provider']]['label']} API 연결 실패: {e}")
     plan = None
     t = text.replace("```json", "").replace("```", "")
     for start in [i for i, c in enumerate(t) if c == "{"][:5]:     # 앞부분 잡문이 있어도 첫 유효 JSON을 찾는다
@@ -2607,20 +2718,17 @@ def llm_call(messages: list, ctx: str = "", user: str = "") -> dict:
         return {"content": [{"type": "text", "text": f"(mock) 명령과 캡처를 확인했습니다. 결과 {n_results}건."}], "stop_reason": "end_turn"}
     st = llm_settings(user)
     if not st["api_key"]:
-        raise HTTPException(400, "설정 탭에서 내 Anthropic API 키를 먼저 넣어 주세요")
-    req = urllib.request.Request(LLM_URL, method="POST", data=json.dumps({
-        "model": st["model"], "max_tokens": 2000, "system": CHAT_SYSTEM + ctx, "tools": CHAT_TOOLS, "messages": messages}).encode(),
-        headers={"Content-Type": "application/json", "x-api-key": st["api_key"], "anthropic-version": "2023-06-01"})
+        raise HTTPException(400, "설정 탭에서 내 API 키(Claude·GPT·Gemini)를 먼저 넣어 주세요")
+    label = PROVIDERS[st["provider"]]["label"]
     try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            res = json.loads(r.read())
+        res = llm_messages(st, CHAT_SYSTEM + ctx, messages, 2000 if st["provider"] == "anthropic" else 4000, tools=CHAT_TOOLS, timeout=120)
         ks_record(user, st["key_id"], res)
         return res
     except urllib.error.HTTPError as e:
         ks_record(user, st["key_id"], error=f"HTTP {e.code}")
-        raise HTTPException(502, f"Claude API 오류 {e.code}: {e.read().decode(errors='ignore')[:300]}")
+        raise HTTPException(502, f"{label} API 오류 {e.code}: {_http_msg(e)}")
     except Exception as e:
-        raise HTTPException(502, f"Claude API 연결 실패: {e}")
+        raise HTTPException(502, f"{label} API 연결 실패: {e}")
 
 
 async def wait_command(cmd_id: int, timeout: float) -> sqlite3.Row:

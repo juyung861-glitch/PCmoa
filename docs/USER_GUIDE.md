@@ -260,9 +260,17 @@ PC를 그룹에 넣으려면 카드를 체크하고 위쪽의 **그룹 이동**�
 
 > 이럴 때: 명령어를 몰라도 "2번 PC에 파이썬 깔려 있는지 확인해 줘"처럼 말로 시키고 싶을 때
 
-**준비:** Anthropic API 키가 필요합니다([console.anthropic.com](https://console.anthropic.com) → API Keys). 사용한 만큼 요금이 나옵니다.
+**준비:** 아래 중 하나의 API 키가 필요합니다. **키가 없으면 AI 기능은 쓸 수 없고**, 나머지 기능은 키 없이도 다 됩니다. 사용한 만큼 각 서비스에 요금이 나옵니다.
 
-1. **설정 → 내 API 키**에 이름과 키(`sk-ant-…`)를 넣고 **[+ 키 추가]** → **연결 확인**으로 동작을 확인합니다.
+| 서비스 | 키 모양 | 발급하는 곳 | 기본 모델 |
+|---|---|---|---|
+| Claude (Anthropic) | `sk-ant-…` | [console.anthropic.com](https://console.anthropic.com) → API Keys | claude-sonnet-5-5 |
+| GPT (OpenAI) | `sk-…` (`sk-proj-…`) | [platform.openai.com](https://platform.openai.com/api-keys) → API keys | gpt-5-mini |
+| Gemini (Google) | `AIza…` | [aistudio.google.com](https://aistudio.google.com/apikey) → Get API key | gemini-2.5-flash |
+
+키를 넣으면 어느 서비스인지 자동으로 알아냅니다. 모델 칸을 비우면 기본 모델을 쓰고, **연결 확인**을 누르면 그 키로 쓸 수 있는 모델 목록이 나와서 바꿀 수 있습니다.
+
+1. **설정 → 내 API 키**에 이름과 키를 넣고 **[+ 키 추가]** → **연결 확인**으로 동작을 확인합니다. 키를 여러 개 넣어 두고 **이 키 사용**으로 바꿔 쓸 수도 있습니다.
    ![설정](images/14-settings.png)
 2. 사이드바 **AI 대화 → + 새 대화**.
 3. 아래 칸에 하고 싶은 일을 적고 **[전송]**.

@@ -27,7 +27,7 @@
 
 - **메인 PC** (서버 역할): Windows 또는 Linux, **Python 3.10 이상**
 - **연결할 PC**: 메인 PC와 같은 네트워크에 있으면 됩니다. Python이 없어도 됩니다(아래 [Python 없는 PC](#python이-없는-pc-연결하기) 참고).
-- AI 대화를 쓰려면 Anthropic API 키 (안 써도 다른 기능은 전부 동작)
+- AI 대화를 쓰려면 **API 키**가 필요합니다: Claude(Anthropic) · GPT(OpenAI) · Gemini(Google) 중 하나 (안 써도 다른 기능은 전부 동작)
 
 ---
 
@@ -129,7 +129,7 @@ PC 카드의 버튼으로 대부분의 기능을 씁니다.
 
 ### AI 대화 (선택)
 
-1. **설정 → 내 API 키**에 Anthropic API 키(`sk-ant-…`)를 넣고 **연결 확인**
+1. **설정 → 내 API 키**에 API 키를 넣고 **연결 확인**. Claude(`sk-ant-…`) · GPT(`sk-…`) · Gemini(`AIza…`) 키를 쓸 수 있고, 어느 서비스인지는 자동으로 알아냅니다.
 2. 사이드바 **AI 대화** → 새 대화 → 하고 싶은 일을 말로 적기
 3. Claude가 명령을 제안하면 **승인 카드**에서 확인·수정한 뒤 실행
 

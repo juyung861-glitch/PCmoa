@@ -248,7 +248,7 @@ body.solo #screenWrap{flex:1;min-height:0} body.solo #screenImg{max-height:calc(
 <body>
 <div class="layout" id="app" style="display:none">
   <aside class="side">
-    <div class="brand"><div class="logo">🖥</div><div><b>PCmoa</b><small>같은 망 PC 연결 관리 v2.6</small></div></div>
+    <div class="brand"><div class="logo">🖥</div><div><b>PCmoa</b><small>같은 망 PC 연결 관리 v2.7</small></div></div>
     <nav class="nav">
       <a href="#" class="active" data-view="pcs"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>PC 목록</a>
       <a href="#" data-view="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg>AI 대화</a>
@@ -391,10 +391,10 @@ New-NetFirewallRule -Name sshd -DisplayName "OpenSSH" -Direction Inbound -Protoc
         <p class="note">PC 연결은 상단 ⚡ PC 연결의 코드로만 합니다. 토큰은 서버가 자동으로 관리하며, 같은 PC는 토큰이 바뀌어도 스스로 다시 붙습니다.</p>
         <p class="note">권한 — admin: 전부 / operator: PC 추가·명령·전원 / viewer: 조회만</p></div>
       <div class="hcard op"><h3>내 API 키 <span style="font-weight:400;font-size:12px;color:var(--muted)">이 계정 전용</span></h3>
-        <p class="note">키를 여러 개 등록해 두고 하나를 골라 씁니다(AI 명령·AI 대화). 키마다 모델과 사용량(요청 수·토큰)이 따로 쌓입니다. 키는 서버의 <code>server/api_keys/</code>에 계정별로 암호화되어 저장되고 Git에는 올라가지 않으며, 화면에는 앞뒤 일부만 보입니다.</p>
+        <p class="note">키를 여러 개 등록해 두고 하나를 골라 씁니다(AI 명령·AI 대화). <b>Claude(Anthropic)·GPT(OpenAI)·Gemini(Google)</b> 키를 쓸 수 있고, 어느 서비스 키인지는 자동으로 알아냅니다. 키마다 모델과 사용량(요청 수·토큰)이 따로 쌓입니다. 키는 서버의 <code>server/api_keys/</code>에 계정별로 암호화되어 저장되고 Git에는 올라가지 않으며, 화면에는 앞뒤 일부만 보입니다.</p>
         <div id="keyTotal" class="ksum">-</div>
         <div id="keyList"></div>
-        <form id="keyAdd" class="kadd"><input name="name" placeholder="이름 (예: 개인, 팀 공용)" maxlength="40"><input name="key" type="password" placeholder="sk-ant-…" autocomplete="off"><input name="model" placeholder="모델 (기본 claude-sonnet-5-5)"><button class="primary">+ 키 추가</button></form>
+        <form id="keyAdd" class="kadd"><input name="name" placeholder="이름 (예: 개인, 팀 공용)" maxlength="40"><input name="key" type="password" placeholder="API 키 (Claude sk-ant-… · GPT sk-… · Gemini AIza…)" autocomplete="off"><input name="model" placeholder="모델 (비우면 서비스별 기본값)"><button class="primary">+ 키 추가</button></form>
         <div id="keyTestResult" style="font-size:13px;margin-top:8px"></div></div>
       <div class="hcard"><h3>내 비밀번호 변경</h3>
         <form id="pwForm" class="row2"><input name="old" type="password" placeholder="현재 비밀번호" required><input name="new" type="password" placeholder="새 비밀번호 (6자 이상)" required><div></div><div style="text-align:right"><button class="primary">변경</button></div></form></div>
@@ -978,7 +978,7 @@ async function loadKeys() {
   $('#keyList').innerHTML = d.keys.map(k => `
     <div class="krow ${k.active ? 'on' : ''}" data-kid="${k.id}" data-name="${esc(k.name)}" data-model="${esc(k.model)}">
       <div class="kn">${esc(k.name)}${k.active ? '<span class="tag">사용 중</span>' : ''}</div>
-      <div class="km"><code>${esc(k.hint)}</code> · 모델 <b>${esc(k.model)}</b><br>요청 ${k.requests}회 · 입력 ${fmtN(k.input_tokens)} · 출력 ${fmtN(k.output_tokens)} 토큰 · 마지막 사용 ${k.last_used ? new Date(k.last_used).toLocaleString('ko-KR') : '없음'}${k.errors ? ` · 오류 ${k.errors}회` : ''}</div>
+      <div class="km">${esc(k.provider_label || "Claude (Anthropic)")} · <code>${esc(k.hint)}</code> · 모델 <b>${esc(k.model)}</b><br>요청 ${k.requests}회 · 입력 ${fmtN(k.input_tokens)} · 출력 ${fmtN(k.output_tokens)} 토큰 · 마지막 사용 ${k.last_used ? new Date(k.last_used).toLocaleString('ko-KR') : '없음'}${k.errors ? ` · 오류 ${k.errors}회` : ''}</div>
       <div class="kacts">${k.active ? '' : '<button class="sm" data-k="use">이 키 사용</button>'}<button class="sm" data-k="test">연결 확인</button><button class="sm" data-k="model">모델</button><button class="sm" data-k="rename">이름</button><button class="sm" data-k="rekey">키 교체</button><button class="sm" data-k="reset">사용량 초기화</button><button class="sm danger" data-k="del">삭제</button></div>
       ${k.last_error ? `<div class="kerr">최근 오류: ${esc(k.last_error)}</div>` : ''}
     </div>`).join('');
@@ -991,7 +991,7 @@ $('#keyList').addEventListener('click', async e => {
     if (act === 'use') { await patch({ active: true }); toast(`'${name}' 키를 씁니다`); }
     if (act === 'model') { const m = prompt(`'${name}' 키의 모델 (비우면 기본값)`, row.dataset.model); if (m === null) return; await patch({ model: m }); toast('모델을 바꿨습니다'); }
     if (act === 'rename') { const n = prompt('새 이름', name); if (!n) return; await patch({ name: n }); }
-    if (act === 'rekey') { const k = prompt(`'${name}'에 넣을 새 키 (sk-ant-…). 사용량 기록은 유지됩니다`); if (!k) return; await patch({ key: k }); toast('키를 교체했습니다'); }
+    if (act === 'rekey') { const k = prompt(`'${name}'에 넣을 새 키 (Claude sk-ant-… · GPT sk-… · Gemini AIza…). 사용량 기록은 유지됩니다`); if (!k) return; await patch({ key: k }); toast('키를 교체했습니다'); }
     if (act === 'reset') { if (!confirm(`'${name}'의 사용량 기록을 0으로 되돌릴까요?`)) return; await patch({ reset_usage: true }); }
     if (act === 'del') { if (!confirm(`'${name}' 키를 삭제할까요? 서버에서 완전히 지워집니다.`)) return; await api(`/api/keys/${kid}`, { method: 'DELETE' }); toast('삭제했습니다'); }
     if (act === 'test') {
