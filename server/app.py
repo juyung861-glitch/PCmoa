@@ -754,7 +754,7 @@ def get_file(file_id: str) -> sqlite3.Row:
 
 
 # ----------------------------------------------------------------------------- 앱
-app = FastAPI(title="Remote PC Manager v0.5")
+app = FastAPI(title="PCmoa")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 
@@ -1789,7 +1789,7 @@ def connect_page(code: str = "") -> str:
 .box{{background:#14141f;border:1px solid #262637;border-radius:14px;padding:28px;max-width:560px;width:92%}} h1{{font-size:20px;margin:0 0 6px}} p{{margin:8px 0;color:#c9c9d8}}
 a.btn{{display:inline-block;background:#6c63ff;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;margin:10px 8px 10px 0;font-weight:600}} a.ghost{{background:#1a1a28;border:1px solid #33334a;font-weight:400}}
 code{{background:#0b0b12;border:1px solid #262637;border-radius:5px;padding:0 5px;font-size:13px}} small{{color:#8a8aa3}}</style>
-<div class=box><h1>이 PC를 PC Manager에 연결</h1><p>메인 PC <b>{ip}</b>{f" · 연결 코드 <b>{code}</b>" if code else ""}. Windows 계정이나 비밀번호는 쓰지 않습니다.</p>{main_block}</div>"""
+<div class=box><h1>이 PC를 PCmoa에 연결</h1><p>메인 PC <b>{ip}</b>{f" · 연결 코드 <b>{code}</b>" if code else ""}. Windows 계정이나 비밀번호는 쓰지 않습니다.</p>{main_block}</div>"""
 
 
 @app.get("/download/connect-{code}.cmd")
@@ -1804,7 +1804,7 @@ def connect_script(code: str) -> Response:
     exe = (BASE.parent / "agent" / "dist" / "pcmanager-agent.exe").exists()
     pyzip = (BASE / "python-embed.zip").exists()
     lines = [
-        "@echo off", "chcp 65001 >nul", "title PC Manager 연결",
+        "@echo off", "chcp 65001 >nul", "title PCmoa 연결",
         f"set SERVER={srv}", f"set CODE={code}", "set DIR=%LOCALAPPDATA%\\PCManager",
         'mkdir "%DIR%" 2>nul', 'cd /d "%DIR%"',
         "echo [1/3] 연결 프로그램을 받는 중...",

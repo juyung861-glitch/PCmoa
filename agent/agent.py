@@ -6,6 +6,7 @@
 자동 시작:  python agent.py --install  → 로그인 시 자동 실행 등록 (Windows 작업 스케줄러 / Linux systemd --user)
 이후:       python agent.py            → agent.json의 PC별 토큰으로 바로 연결
 옵션:       --enroll <등록 토큰>  관리자용 일괄 등록   --dry-run  종료/재부팅을 실제로 실행하지 않음
+삭제:       python agent.py --uninstall  → 자동 시작 해제 + 실행 중인 연결 프로그램 종료 + 등록 정보 삭제
 """
 import os
 import sys
@@ -13,7 +14,7 @@ import sys
 # ----------------------------------------------------------------- 지킴이(가벼운 시작): 무거운 모듈을 불러오기 전에 갈라진다
 # 지킴이는 자식(실제 연결 프로그램)을 띄우고 지켜보기만 하므로, 네트워크·화면 모듈을 불러올 필요가 없다 → 메모리 절약
 if __name__ == "__main__" and not os.environ.get("PCM_CHILD") and \
-        not any(x in sys.argv for x in ("--register", "--install-admin", "-h", "--help")):
+        not any(x in sys.argv for x in ("--register", "--install-admin", "--uninstall", "-h", "--help")):
     import subprocess
     import time
     from pathlib import Path as _P
@@ -1308,7 +1309,7 @@ def install_autostart() -> bool:
         return ok
     unit = Path.home() / ".config/systemd/user/pcmanager-agent.service"
     unit.parent.mkdir(parents=True, exist_ok=True)
-    unit.write_text(f"[Unit]\nDescription=PC Manager agent\n[Service]\nExecStart={cmd}\nRestart=always\n[Install]\nWantedBy=default.target\n")
+    unit.write_text(f"[Unit]\nDescription=PCmoa agent\n[Service]\nExecStart={cmd}\nRestart=always\n[Install]\nWantedBy=default.target\n")
     r = subprocess.run(["systemctl", "--user", "enable", "--now", "pcmanager-agent"], capture_output=True)
     print(f"[agent] systemd 사용자 서비스 등록: {unit}" + ("" if r.returncode == 0 else " (systemctl 실패 — 로그인 시 수동 실행 필요)"))
     return r.returncode == 0
@@ -1369,6 +1370,68 @@ def install_admin() -> None:
     time.sleep(3)
 
 
+def uninstall() -> None:
+    """이 PC에서 연결 프로그램을 걷어 낸다: 자동 시작 해제 → 실행 중인 연결 프로그램 종료 → 등록 정보(agent.json) 삭제.
+    메인 PC 목록의 카드는 대시보드에서 따로 지운다(⋯ → 목록에서 삭제)."""
+    me = os.getpid()
+    print("[uninstall] 1/3 자동 시작 해제")
+    if WIN:
+        r = subprocess.run(["reg", "delete", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "/v", "PCManagerAgent", "/f"],
+                           capture_output=True)
+        print("  - 로그인 자동 실행(레지스트리): " + ("지움" if r.returncode == 0 else "없음"))
+        q = subprocess.run(["schtasks", "/Query", "/TN", "PCManagerAgent"], capture_output=True)
+        if q.returncode == 0:
+            d = subprocess.run(["schtasks", "/Delete", "/TN", "PCManagerAgent", "/F"], capture_output=True)
+            if d.returncode == 0:
+                print("  - 관리자 권한 자동 실행(작업 스케줄러): 지움")
+            else:
+                print("  - 관리자 권한 자동 실행(작업 스케줄러): 권한이 없어 못 지움")
+                print("    → 관리자 PowerShell에서:  schtasks /Delete /TN PCManagerAgent /F")
+        else:
+            print("  - 관리자 권한 자동 실행(작업 스케줄러): 없음")
+    else:
+        unit = Path.home() / ".config/systemd/user/pcmanager-agent.service"
+        subprocess.run(["systemctl", "--user", "disable", "--now", "pcmanager-agent"], capture_output=True)
+        if unit.exists():
+            unit.unlink()
+            subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
+            print(f"  - systemd 사용자 서비스: 지움 ({unit})")
+        else:
+            print("  - systemd 사용자 서비스: 없음")
+
+    print("[uninstall] 2/3 실행 중인 연결 프로그램 종료")
+    killed = 0
+    for _ in range(2):   # 지킴이가 자식을 다시 띄울 틈이 없게 두 번 훑는다
+        if WIN:
+            ps = ("Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne " + str(me) + " -and "
+                  "(($_.Name -match '^python' -and $_.CommandLine -match 'agent\\.py') -or $_.Name -eq 'pcmanager-agent.exe') } | "
+                  "ForEach-Object { Stop-Process -Id $_.ProcessId -Force; $_.ProcessId }")
+            out = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True).stdout
+            killed += len([x for x in out.split() if x.strip().isdigit()])
+        else:
+            out = subprocess.run(["pgrep", "-f", r"agent\.py"], capture_output=True, text=True).stdout
+            for pid in (int(x) for x in out.split() if x.isdigit()):
+                if pid in (me, os.getppid()):
+                    continue
+                try:
+                    os.kill(pid, 9)
+                    killed += 1
+                except OSError:
+                    pass
+        time.sleep(1)
+    print(f"  - 종료한 프로세스: {killed}개")
+
+    print("[uninstall] 3/3 등록 정보 삭제")
+    for f in (STATE, HERE / "agent.alive"):
+        if f.exists():
+            f.unlink()
+            print(f"  - 지움: {f}")
+    print()
+    print("[uninstall] 끝. 남은 일:")
+    print(f"  1) 이 폴더를 통째로 지우면 프로그램이 완전히 사라집니다: {HERE}")
+    print("  2) 메인 PC 대시보드에서 이 PC 카드의 ⋯ → '목록에서 삭제'")
+
+
 def rejoin(server: str, old_token: str, hostname: str, mac: str, osname: str, host: str):
     """토큰이 안 맞을 때: 같은 PC가 목록에 남아 있으면 코드 없이 새 토큰을 받는다"""
     try:
@@ -1421,7 +1484,11 @@ def main() -> None:
     ap.add_argument("--no-screen", action="store_true", help="이 PC의 화면 보기·조종을 거부")
     ap.add_argument("--no-update", action="store_true", help="메인 PC의 새 버전으로 자동 업데이트하지 않음")
     ap.add_argument("--install-admin", action="store_true", help="(Windows) 관리자 권한으로 자동 실행 — 관리자 권한 창도 조종 가능")
+    ap.add_argument("--uninstall", action="store_true", help="이 PC에서 연결 프로그램 걷어 내기 (자동 시작 해제·종료·등록 정보 삭제)")
     a = ap.parse_args()
+    if a.uninstall:
+        uninstall()
+        return
     if a.install_admin:
         install_admin()
         return
@@ -1580,7 +1647,7 @@ def log_crash(text: str) -> None:
 
 if __name__ == "__main__":
     disable_quickedit()
-    one_shot = any(x in sys.argv for x in ("--register", "--install-admin", "-h", "--help"))
+    one_shot = any(x in sys.argv for x in ("--register", "--install-admin", "--uninstall", "-h", "--help"))
     if os.environ.get("PCM_CHILD") or one_shot:
         if os.environ.get("PCM_CHILD"):
             _nonblocking_print()

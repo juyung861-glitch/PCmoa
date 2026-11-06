@@ -356,7 +356,7 @@ Get-NetAdapter | Where Status -eq Up | Select Name, MacAddress</pre>
         <p>상단 <b>⚡ PC 연결</b> → 이름 입력 → 6자리 코드. 화면에 뜨는 주소(<code>http://<span class="srvip">-</span>:8000/connect?code=숫자</code>)를 연결할 PC에서 열고 "연결 시작" → 받은 파일을 실행하면 끝입니다. 주소·코드 입력 없음. Windows 계정·비밀번호가 필요 없고, 자동 시작까지 등록됩니다. (아래는 관리자용 일괄 등록 방법)</p></div>
       <div class="hcard"><h3>4-1. 관리자용 — 등록 토큰으로 일괄 등록</h3>
         <p>① 메인 PC(서버)에서 방화벽 8000 포트 허용 — 관리자 PowerShell:</p>
-        <pre>New-NetFirewallRule -DisplayName "PC Manager" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow</pre>
+        <pre>New-NetFirewallRule -DisplayName "PCmoa" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow</pre>
         <p>② 다른 PC에 <code>agent</code> 폴더를 복사하고 최초 1회 등록:</p>
         <pre>pip install psutil
 python agent.py --server http://<span class="srvip">-</span>:8000 --enroll <span class="srvtoken">(관리자만 표시)</span></pre>
